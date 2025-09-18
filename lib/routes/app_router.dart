@@ -12,6 +12,8 @@ import '../screens/map_screen.dart';
 import '../screens/reports_alerts_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/location_search_screen.dart';
+import '../screens/debug_screen.dart';
+import '../screens/analytics_screen.dart';
 
 /// App router configuration
 final appRouter = GoRouter(
@@ -84,6 +86,23 @@ final appRouter = GoRouter(
       path: '/location-search',
       name: 'location-search',
       builder: (context, state) => const LocationSearchScreen(),
+    ),
+    GoRoute(
+      path: '/debug',
+      name: 'debug',
+      builder: (context, state) => const DebugScreen(),
+    ),
+    GoRoute(
+      path: '/analytics',
+      name: 'analytics',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return AnalyticsScreen(
+          selectedCity: extra?['selectedCity'],
+          selectedDistrict: extra?['selectedDistrict'],
+          selectedState: extra?['selectedState'],
+        );
+      },
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

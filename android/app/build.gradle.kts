@@ -8,10 +8,12 @@ plugins {
 android {
     namespace = "com.example.jalnetra"
     compileSdk = flutter.compileSdkVersion
+    ndkVersion = "26.3.11579264"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -27,6 +29,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Disable native builds to avoid NDK issues
+        ndk {
+            abiFilters.clear()
+        }
     }
 
     buildTypes {
@@ -40,4 +47,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

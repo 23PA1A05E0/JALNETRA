@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import '../providers/theme_provider.dart';
 
 /// Settings screen for app configuration
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -11,7 +11,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _darkMode = false;
   bool _notificationsEnabled = true;
   bool _locationEnabled = true;
   String _mapProvider = 'Google Maps';
@@ -33,14 +32,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Card(
             child: Column(
               children: [
-                SwitchListTile(
-                  title: const Text('Dark Mode'),
-                  subtitle: const Text('Use dark theme'),
-                  value: _darkMode,
-                  onChanged: (value) {
-                    setState(() {
-                      _darkMode = value;
-                    });
+                Consumer(
+                  builder: (context, ref, child) {
+                    final themeMode = ref.watch(themeModeProvider);
+                    final themeNotifier = ref.read(themeModeProvider.notifier);
+                    
+                    return SwitchListTile(
+                      title: const Text('Dark Mode'),
+                      subtitle: Text('Current: ${themeNotifier.themeModeName}'),
+                      value: themeMode == ThemeMode.dark,
+                      onChanged: (value) {
+                        themeNotifier.toggleTheme();
+                      },
+                    );
                   },
                 ),
                 SwitchListTile(
@@ -413,7 +417,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                _darkMode = false;
                 _notificationsEnabled = true;
                 _locationEnabled = true;
                 _mapProvider = 'Google Maps';

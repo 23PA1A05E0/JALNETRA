@@ -255,24 +255,25 @@ class _RechargeSettingsDialogState extends ConsumerState<RechargeSettingsDialog>
     // 2. Calling the API service to update the station config
     // 3. Updating the local state
     
-    final config = RechargeConfig(
-      stationId: widget.station.id,
-      targetYield: _targetYield,
-      preferredMethod: _preferredMethod,
-      thresholds: {
-        'min_yield': _minYieldThreshold,
-        'max_yield': _maxYieldThreshold,
-        'temperature': _temperatureThreshold,
-        'ph': _phThreshold,
-      },
-      autoAdjust: _autoAdjust,
-      notificationsEnabled: _notificationsEnabled,
-      minYieldThreshold: _minYieldThreshold,
-      maxYieldThreshold: _maxYieldThreshold,
-      temperatureThreshold: _temperatureThreshold,
-      phThreshold: _phThreshold,
-      notes: _notesController.text,
-    );
+    // TODO: Implement actual API call to save recharge configuration
+    // final config = RechargeConfig(
+    //   stationId: widget.station.id,
+    //   targetYield: _targetYield,
+    //   preferredMethod: _preferredMethod,
+    //   thresholds: {
+    //     'min_yield': _minYieldThreshold,
+    //     'max_yield': _maxYieldThreshold,
+    //     'temperature': _temperatureThreshold,
+    //     'ph': _phThreshold,
+    //   },
+    //   autoAdjust: _autoAdjust,
+    //   notificationsEnabled: _notificationsEnabled,
+    //   minYieldThreshold: _minYieldThreshold,
+    //   maxYieldThreshold: _maxYieldThreshold,
+    //   temperatureThreshold: _temperatureThreshold,
+    //   phThreshold: _phThreshold,
+    //   notes: _notesController.text,
+    // );
 
     // Update the station in the provider
     ref.read(stationsProvider.notifier).updateStationStatus(

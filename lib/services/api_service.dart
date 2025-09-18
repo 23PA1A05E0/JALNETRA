@@ -259,7 +259,6 @@ class ApiService {
     TimeInterval interval,
   ) {
     final measurements = <Measurement>[];
-    final duration = endTime.difference(startTime);
     final stepDuration = _getStepDuration(interval);
     
     for (var current = startTime; current.isBefore(endTime); current = current.add(stepDuration)) {
@@ -325,7 +324,6 @@ class ApiService {
     DateTime endTime,
   ) {
     final estimates = <RechargeEstimate>[];
-    final duration = endTime.difference(startTime);
     final stepDuration = const Duration(hours: 1);
     
     for (var current = startTime; current.isBefore(endTime); current = current.add(stepDuration)) {

@@ -49,6 +49,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.2
 
   # Maps & Location
   google_maps_flutter: ^2.6.1
@@ -57,13 +58,13 @@ dependencies:
 
   # Charts
   fl_chart: ^0.68.0
+  syncfusion_flutter_charts: ^31.1.19
 
   # Connectivity
   connectivity_plus: ^6.0.5
 
   # Background Tasks
-  workmanager: ^0.5.2
-  background_fetch: ^1.4.0
+  # workmanager: ^0.5.2  # Removed due to compatibility issues
 
   # Push Notifications
   firebase_core: ^3.6.0

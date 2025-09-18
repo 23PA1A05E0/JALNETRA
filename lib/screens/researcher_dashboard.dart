@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/dwlr_provider.dart';
-import '../providers/user_provider.dart';
 import '../models/dwlr_station.dart';
 import '../widgets/researcher_card.dart';
 import '../widgets/data_access_card.dart';

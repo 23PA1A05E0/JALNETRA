@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../models/station.dart';
 
 /// Station card widget for displaying station information
