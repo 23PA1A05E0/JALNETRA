@@ -273,7 +273,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                         fontSize: 26,
                       fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
-                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -282,11 +282,11 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 16,
                         height: 1.4,
-                      ),
-                    ),
-                  ],
                     ),
                   ),
+                ],
+              ),
+            ),
                 ],
               ),
         ],
@@ -347,10 +347,10 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                     'Danger Zone Monitoring',
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange[700],
-                    ),
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Colors.orange[700],
+              ),
+            ),
                 ),
               ],
             ),
@@ -408,7 +408,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                   ),
                 ),
                 child: Row(
-                  children: [
+              children: [
                     Icon(
                       Icons.info_outline,
                       color: Colors.orange[700],
@@ -426,9 +426,9 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                     ),
                   ],
                 ),
-              ),
-          ],
-        ),
+                ),
+              ],
+            ),
       ),
     );
   }
@@ -463,15 +463,15 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+            Text(
           'Zone Statistics - $selectedRegion',
           style: TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.orange[700],
-          ),
-        ),
-        const SizedBox(height: 16),
+                fontWeight: FontWeight.bold,
+                color: Colors.orange[700],
+              ),
+            ),
+            const SizedBox(height: 16),
         Row(
             children: [
             Expanded(
@@ -514,8 +514,8 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                 regionData['total'].toString(),
                 'All',
                 Colors.blue,
-                Icons.location_on,
-              ),
+              Icons.location_on,
+            ),
             ),
           ],
         ),
@@ -1044,20 +1044,21 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
     required String? value,
     required List<String> items,
     required Function(String?) onChanged,
-  }) {
+}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.orange[700],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
+          height: 45, // Fixed smaller height
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -1065,7 +1066,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                 Colors.grey[50]!,
               ],
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10), // Smaller border radius
             border: Border.all(
               color: Colors.orange.withOpacity(0.3),
               width: 1.5,
@@ -1073,7 +1074,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
             boxShadow: [
               BoxShadow(
                 color: Colors.orange.withOpacity(0.1),
-                blurRadius: 8,
+                blurRadius: 6, // Smaller blur radius
                 offset: const Offset(0, 2),
               ),
             ],
@@ -1081,29 +1082,44 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
-              hint: Text(
-                'Select $label',
-                style: TextStyle(
-                  color: Colors.grey[600],
+              hint: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Select $label',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14, // Smaller font size
+                  ),
                 ),
               ),
               style: const TextStyle(
                 color: Colors.black87,
-                fontSize: 16,
+                fontSize: 14, // Smaller font size
+                fontWeight: FontWeight.w500,
               ),
               dropdownColor: Colors.white,
-              icon: Icon(
-                Icons.arrow_drop_down,
-                color: Colors.orange[700],
+              icon: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Colors.orange[700],
+                  size: 20, // Smaller icon size
+                ),
               ),
+              menuMaxHeight: 200, // Limit dropdown popup height
               isExpanded: true,
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(
-                    item,
-                    style: const TextStyle(
-                      color: Colors.black87,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), // Even smaller padding
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13, // Smaller font size for dropdown items
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 );
