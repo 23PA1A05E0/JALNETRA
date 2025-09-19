@@ -5,8 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../providers/location_search_provider.dart';
 import '../providers/manual_data_provider.dart';
-import '../providers/theme_provider.dart';
-import '../widgets/water_level_chart_painter.dart';
 
 /// Citizen Dashboard - Dark theme with location detection and analytics
 class CitizenDashboard extends ConsumerStatefulWidget {
@@ -252,42 +250,36 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Dark theme background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Citizen Dashboard',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color(0xFF0CFF0C),
         foregroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: true,
+        leading: Navigator.of(context).canPop() 
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS 
+                  ? Icons.arrow_back_ios 
+                  : Icons.arrow_back,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
-          Consumer(
-            builder: (context, ref, child) {
-              final themeMode = ref.watch(themeModeProvider);
-              final themeNotifier = ref.read(themeModeProvider.notifier);
-              
-              return IconButton(
-                onPressed: () {
-                  themeNotifier.toggleTheme();
-                },
-                icon: Icon(
-                  themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
-                ),
-                tooltip: 'Toggle Theme (Current: ${themeNotifier.themeModeName})',
-              );
-            },
-          ),
+          // Settings navigation button
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => context.go('/settings'),
-          ),
-          IconButton(
-            onPressed: () {
-              context.go('/debug');
-            },
-            icon: const Icon(Icons.settings_applications),
-            tooltip: 'Open Debug Screen',
+            onPressed: () => context.push('/settings'),
+            tooltip: 'Settings',
           ),
         ],
       ),
@@ -299,15 +291,61 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             // Welcome Section
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.green, Colors.green[700]!],
+                  colors: Theme.of(context).brightness == Brightness.dark 
+                    ? [
+                        const Color(0xFF0CFF0C).withOpacity(0.8),
+                        const Color(0xFF0CFF0C).withOpacity(0.6),
+                        Colors.green[700]!.withOpacity(0.8),
+                      ]
+                    : [
+                        const Color(0xFF4CAF50), // Softer green
+                        const Color(0xFF66BB6A), // Lighter green
+                        const Color(0xFF81C784), // Even lighter green
+                      ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                  stops: const [0.0, 0.5, 1.0],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                      ? const Color(0xFF0CFF0C).withOpacity(0.3)
+                      : const Color(0xFF4CAF50).withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.waving_hand,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -315,8 +353,9 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                     'Welcome, Citizen',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                                fontSize: 26,
                       fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -325,7 +364,13 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 16,
-                    ),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -346,6 +391,15 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
 
             const SizedBox(height: 24),
 
+            // New Features Section - Show after analytics button is clicked
+            if (showAnalytics &&
+                selectedState != null &&
+                selectedDistrict != null &&
+                selectedCity != null)
+              _buildNewFeaturesSection(),
+
+            const SizedBox(height: 24),
+
             // Analytics now redirects to separate screen
           ],
         ),
@@ -354,77 +408,194 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   Widget _buildLocationSelectionSection() {
-    return Card(
-      elevation: 8,
-      color: Colors.white, // White background for contrast
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDarkMode 
+            ? [
+                const Color(0xFF1a1a1a).withOpacity(0.9),
+                const Color(0xFF2a2a2a).withOpacity(0.8),
+                const Color(0xFF1a1a1a).withOpacity(0.9),
+              ]
+            : [
+                const Color(0xFFFAFAFA), // Very light gray
+                const Color(0xFFF5F5F5), // Light gray
+                const Color(0xFFFAFAFA), // Very light gray
+              ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.5, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode 
+            ? const Color(0xFF0CFF0C).withOpacity(0.3)
+            : const Color(0xFF4CAF50).withOpacity(0.15), // Softer border
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+              ? const Color(0xFF0CFF0C).withOpacity(0.1)
+              : const Color(0xFF4CAF50).withOpacity(0.08), // Very subtle shadow
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: isDarkMode 
+              ? Colors.black.withOpacity(0.3)
+              : Colors.grey.withOpacity(0.05), // Very light shadow
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      colors: isDarkMode 
+                        ? [
+                            const Color(0xFF0CFF0C).withOpacity(0.2),
+                            const Color(0xFF0CFF0C).withOpacity(0.1),
+                          ]
+                        : [
+                            const Color(0xFF4CAF50).withOpacity(0.1), // Softer green
+                            const Color(0xFF66BB6A).withOpacity(0.05), // Very light green
+                          ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode 
+                          ? const Color(0xFF0CFF0C).withOpacity(0.2)
+                          : const Color(0xFF4CAF50).withOpacity(0.1), // Softer shadow
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.location_on,
-                    color: Colors.green,
-                    size: 24,
+                    color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF4CAF50), // Softer green
+                    size: 28,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
                   'Select Your Location',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
+                      color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF2E7D32), // Darker green for better contrast
+                      fontSize: 22,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Detect My Location Button
             _buildDetectLocationButton(),
             if (_currentPosition != null || _currentPlacemark != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildDetectedDetailsCard(),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Divider
             Container(
-              height: 1,
-              color: Colors.grey[300],
+              margin: const EdgeInsets.symmetric(vertical: 20),
               child: Row(
                 children: [
                   Expanded(
-                    child: Container(height: 1, color: Colors.grey[300]),
+                    child: Container(
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            isDarkMode 
+                              ? const Color(0xFF0CFF0C).withOpacity(0.3)
+                              : Colors.green.withOpacity(0.3),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDarkMode 
+                          ? [
+                              const Color(0xFF0CFF0C).withOpacity(0.1),
+                              const Color(0xFF0CFF0C).withOpacity(0.05),
+                            ]
+                          : [
+                              Colors.green.withOpacity(0.1),
+                              Colors.green.withOpacity(0.05),
+                            ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDarkMode 
+                          ? const Color(0xFF0CFF0C).withOpacity(0.3)
+                          : Colors.green.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
                     child: Text(
                       'OR',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: isDarkMode 
+                          ? const Color(0xFF0CFF0C)
+                          : Colors.green[600],
                         fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
                   Expanded(
-                    child: Container(height: 1, color: Colors.grey[300]),
+                    child: Container(
+                      height: 1,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            isDarkMode 
+                              ? const Color(0xFF0CFF0C).withOpacity(0.3)
+                              : Colors.green.withOpacity(0.3),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Manual Selection Dropdowns
             _buildManualSelectionDropdowns(),
@@ -450,37 +621,129 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.06),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: Theme.of(context).brightness == Brightness.dark 
+            ? [
+                const Color(0xFF1a1a1a).withOpacity(0.8),
+                const Color(0xFF2a2a2a).withOpacity(0.6),
+              ]
+            : [
+                const Color(0xFFFAFAFA).withOpacity(0.9), // Very light background
+                const Color(0xFFF0F0F0).withOpacity(0.8), // Subtle contrast
+              ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark 
+            ? const Color(0xFF0CFF0C).withOpacity(0.2)
+            : const Color(0xFF4CAF50).withOpacity(0.1), // Very subtle border
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).brightness == Brightness.dark 
+              ? const Color(0xFF0CFF0C).withOpacity(0.05)
+              : const Color(0xFF4CAF50).withOpacity(0.03), // Very subtle shadow
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.my_location, color: Colors.green),
-              const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: Theme.of(context).brightness == Brightness.dark 
+                        ? [
+                            const Color(0xFF0CFF0C).withOpacity(0.2),
+                            const Color(0xFF0CFF0C).withOpacity(0.1),
+                          ]
+                        : [
+                            const Color(0xFF4CAF50).withOpacity(0.08), // Very subtle green
+                            const Color(0xFF66BB6A).withOpacity(0.04), // Even more subtle
+                          ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.my_location,
+                    color: Theme.of(context).brightness == Brightness.dark 
+                      ? const Color(0xFF0CFF0C) 
+                      : const Color(0xFF4CAF50), // Softer green
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
               Text(
                 'Detected Location',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.green[800],
+                    color: Theme.of(context).brightness == Brightness.dark 
+                      ? const Color(0xFF0CFF0C) 
+                      : const Color(0xFF2E7D32), // Darker green for better contrast
+                    fontSize: 18,
                     ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           if (pos != null)
-            Text(
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark 
+                  ? const Color(0xFF2a2a2a).withOpacity(0.5)
+                  : const Color(0xFFF5F5F5).withOpacity(0.6), // Softer light background
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark 
+                    ? const Color(0xFF0CFF0C).withOpacity(0.1)
+                    : const Color(0xFF4CAF50).withOpacity(0.08), // Very subtle border
+                ),
+              ),
+              child: Text(
               'Lat: ${pos.latitude.toStringAsFixed(6)}, Lng: ${pos.longitude.toStringAsFixed(6)}',
-              style: const TextStyle(color: Colors.black87),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
           if (subtitle.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: Colors.black87)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark 
+                  ? const Color(0xFF2a2a2a).withOpacity(0.5)
+                  : const Color(0xFFF5F5F5).withOpacity(0.6), // Softer light background
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark 
+                    ? const Color(0xFF0CFF0C).withOpacity(0.1)
+                    : const Color(0xFF4CAF50).withOpacity(0.08), // Very subtle border
+                ),
+              ),
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  fontSize: 14,
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -521,6 +784,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
 
   Widget _buildManualSelectionDropdowns() {
     final searchState = ref.watch(locationSearchProvider);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final List<String> stateItems =
         searchState.states.isNotEmpty ? searchState.states : indianStates;
     final List<String> districtItems = (selectedState == 'Andhra Pradesh')
@@ -534,17 +798,80 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     if (selectedState == 'Andhra Pradesh') {
       print('DEBUG: Andhra Pradesh districts: $districtItems');
     }
-    return Column(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDarkMode 
+            ? [
+                const Color(0xFF1a1a1a).withOpacity(0.8),
+                const Color(0xFF2a2a2a).withOpacity(0.6),
+              ]
+            : [
+                const Color(0xFFFAFAFA).withOpacity(0.9), // Very light background
+                const Color(0xFFF0F0F0).withOpacity(0.8), // Subtle contrast
+              ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode 
+            ? const Color(0xFF0CFF0C).withOpacity(0.2)
+            : const Color(0xFF4CAF50).withOpacity(0.1), // Very subtle border
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+              ? const Color(0xFF0CFF0C).withOpacity(0.05)
+              : const Color(0xFF4CAF50).withOpacity(0.03), // Very subtle shadow
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDarkMode 
+                      ? [
+                          const Color(0xFF0CFF0C).withOpacity(0.2),
+                          const Color(0xFF0CFF0C).withOpacity(0.1),
+                        ]
+                      : [
+                          const Color(0xFF4CAF50).withOpacity(0.08), // Very subtle green
+                          const Color(0xFF66BB6A).withOpacity(0.04), // Even more subtle
+                        ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.location_on,
+                  color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF4CAF50), // Softer green
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
         Text(
           'Manual Selection',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.green[700],
+                  color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF2E7D32), // Darker green for better contrast
+                  fontSize: 18,
           ),
         ),
-        const SizedBox(height: 16),
+            ],
+          ),
+          const SizedBox(height: 20),
         _buildDropdown('State', selectedState, stateItems, (
           value,
         ) {
@@ -588,6 +915,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           },
         ),
       ],
+      ),
     );
   }
 
@@ -597,6 +925,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     List<String> items,
     Function(String?) onChanged,
   ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -604,36 +934,84 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           label,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.green[700],
+            color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF2E7D32), // Darker green for better contrast
           ),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.green.withOpacity(0.3)),
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.white,
+            gradient: LinearGradient(
+              colors: isDarkMode 
+                ? [
+                    const Color(0xFF1a1a1a),
+                    const Color(0xFF2a2a2a),
+                  ]
+                : [
+                    const Color(0xFFFAFAFA), // Very light background
+                    const Color(0xFFF0F0F0), // Slightly darker for subtle contrast
+                  ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: isDarkMode 
+                ? const Color(0xFF0CFF0C).withOpacity(0.4)
+                : const Color(0xFF4CAF50).withOpacity(0.2), // Softer border
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode 
+                  ? const Color(0xFF0CFF0C).withOpacity(0.1)
+                  : const Color(0xFF4CAF50).withOpacity(0.05), // Very subtle shadow
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               hint: Text(
                 'Select $label',
-                style: const TextStyle(color: Colors.black54),
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : const Color(0xFF666666), // Softer gray
+                  fontSize: 16,
+                ),
               ),
               isExpanded: true,
-              style: const TextStyle(color: Colors.black),
-              dropdownColor: Colors.white,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : const Color(0xFF333333), // Darker text for better contrast
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              dropdownColor: isDarkMode 
+                ? const Color(0xFF2a2a2a)
+                : const Color(0xFFFAFAFA), // Light background
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                color: isDarkMode ? const Color(0xFF0CFF0C) : const Color(0xFF4CAF50), // Softer green
+                size: 24,
+              ),
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
                   child: Container(
-                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
                       item,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : const Color(0xFF333333), // Darker text
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 );
@@ -646,16 +1024,1138 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     );
   }
 
+  /// Build new features section with all requested features
+  Widget _buildNewFeaturesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Header
+        Container(
+      width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[600]!, Colors.blue[800]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+              const Icon(Icons.analytics, color: Colors.white, size: 28),
+            const SizedBox(width: 12),
+            const Text(
+                'Water Analytics & Insights',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+          ],
+        ),
+      ),
+        
+        const SizedBox(height: 20),
+        
+        // Traffic Signal Status
+        _buildTrafficSignalCard(),
+        
+        const SizedBox(height: 16),
+        
+        // Depth Analytics Row
+        Row(
+          children: [
+            Expanded(child: _buildAverageDepthCard()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildMinMaxDepthCard()),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Yearly Change and Well Depth Row
+        Row(
+          children: [
+            Expanded(child: _buildYearlyChangeCard()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildWellDepthCard()),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Forecasts Row
+        Row(
+          children: [
+            Expanded(child: _buildMonthlyForecastCard()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDayForecastCard()),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Alerts and Notifications
+        _buildAlertsNotificationsCard(),
+      ],
+    );
+  }
+
+  /// Build Traffic Signal Card
+  Widget _buildTrafficSignalCard() {
+        return Card(
+      elevation: 6,
+      color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                    Icons.traffic,
+                    color: Colors.orange,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                Text(
+                  'Regional Water Status',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Traffic Signal Display
+            Center(
+                      child: Column(
+                        children: [
+                  _buildTrafficLight(),
+                  const SizedBox(height: 12),
+                          Text(
+                    _getTrafficSignalStatus(),
+                    style: TextStyle(
+                      fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                      color: _getTrafficSignalColor(),
+                            ),
+                          ),
+                  const SizedBox(height: 8),
+                          Text(
+                    _getTrafficSignalDescription(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    ),
+                    textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build Traffic Light Visual
+  Widget _buildTrafficLight() {
+    final status = _getTrafficSignalLevel();
+    return Container(
+      width: 80,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: Colors.grey[600]!, width: 3),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildTrafficLightBulb(Colors.red, status == 'critical'),
+          _buildTrafficLightBulb(Colors.orange, status == 'warning'),
+          _buildTrafficLightBulb(Colors.green, status == 'good'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrafficLightBulb(Color color, bool isActive) {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: isActive ? color : Colors.grey[400],
+        shape: BoxShape.circle,
+        boxShadow: isActive ? [
+          BoxShadow(
+            color: color.withOpacity(0.5),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ] : null,
+      ),
+    );
+  }
+
+  String _getTrafficSignalLevel() {
+    // This will be updated to use real API data
+    // For now, we'll use mock logic but it can be easily replaced with real data
+    final random = DateTime.now().millisecond % 3;
+    switch (random) {
+      case 0: return 'good';
+      case 1: return 'warning';
+      case 2: return 'critical';
+      default: return 'good';
+    }
+  }
+
+  String _getTrafficSignalStatus() {
+    switch (_getTrafficSignalLevel()) {
+      case 'good': return 'GOOD';
+      case 'warning': return 'CAUTION';
+      case 'critical': return 'CRITICAL';
+      default: return 'GOOD';
+    }
+  }
+
+  Color _getTrafficSignalColor() {
+    switch (_getTrafficSignalLevel()) {
+      case 'good': return Colors.green;
+      case 'warning': return Colors.orange;
+      case 'critical': return Colors.red;
+      default: return Colors.green;
+    }
+  }
+
+  String _getTrafficSignalDescription() {
+    switch (_getTrafficSignalLevel()) {
+      case 'good': return 'Water levels are healthy and sustainable';
+      case 'warning': return 'Water levels are declining, monitor closely';
+      case 'critical': return 'Water levels critically low, immediate action needed';
+      default: return 'Water levels are healthy and sustainable';
+    }
+  }
+
+  /// Build Average Depth Card
+  Widget _buildAverageDepthCard() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final stationData = ref.watch(stationDataProvider);
+        
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.trending_down, color: Colors.blue[600], size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                            Expanded(
+                      child: Text(
+                        'Average Depth',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.blue[700],
+                        ),
+                              ),
+                            ),
+                          ],
+                        ),
+                const SizedBox(height: 12),
+                stationData.when(
+                  data: (data) {
+                    final avgDepth = _calculateAverageDepthFromAPI(data);
+                    return Text(
+                      '${avgDepth.toStringAsFixed(1)} m',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[600],
+                      ),
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stack) => Text(
+                    'N/A',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Last 12 months',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build Min Max Depth Card
+  Widget _buildMinMaxDepthCard() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final stationData = ref.watch(stationDataProvider);
+        
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                        Row(
+                          children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.height, color: Colors.purple[600], size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                            Expanded(
+                      child: Text(
+                        'Min / Max Depth',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.purple[700],
+                        ),
+                              ),
+                            ),
+                          ],
+                        ),
+                const SizedBox(height: 12),
+                stationData.when(
+                  data: (data) {
+                    final minMax = _calculateMinMaxDepthFromAPI(data);
+                    return Row(
+                          children: [
+                            Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Min',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                              Text(
+                                '${minMax['min']?.toStringAsFixed(1) ?? 'N/A'} m',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        ),
+                        Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                    Text(
+                                'Max',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                              Text(
+                                '${minMax['max']?.toStringAsFixed(1) ?? 'N/A'} m',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                  color: Colors.red[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stack) => Row(
+                    children: [
+                      Expanded(child: Text('N/A', style: TextStyle(color: Colors.grey[600]))),
+                      Expanded(child: Text('N/A', style: TextStyle(color: Colors.grey[600]))),
+                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+        );
+      },
+    );
+  }
+
+  /// Build Yearly Change Card
+  Widget _buildYearlyChangeCard() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final stationData = ref.watch(stationDataProvider);
+        
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                stationData.when(
+                  data: (data) {
+                    final yearlyChange = _calculateYearlyChangeFromAPI(data);
+                    return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: yearlyChange >= 0 
+                                    ? Colors.red.withOpacity(0.2)
+                                    : Colors.green.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                yearlyChange >= 0 ? Icons.trending_up : Icons.trending_down,
+                                color: yearlyChange >= 0 ? Colors.red[600] : Colors.green[600],
+                                size: 20,
+                              ),
+                            ),
+                                  const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Yearly Change',
+                                style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: yearlyChange >= 0 ? Colors.red[700] : Colors.green[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                              Text(
+                          '${yearlyChange >= 0 ? '+' : ''}${yearlyChange.toStringAsFixed(1)} m',
+                          style: TextStyle(
+                            fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                            color: yearlyChange >= 0 ? Colors.red[600] : Colors.green[600],
+                                ),
+                              ),
+                        const SizedBox(height: 4),
+                              Text(
+                          'vs Last Year',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stack) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.trending_flat, color: Colors.grey[400], size: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Yearly Change',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.grey[400],
+                              ),
+                          ),
+                        ),
+                      ],
+                      ),
+                      const SizedBox(height: 12),
+                        Text(
+                        'N/A',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                        Text(
+                        'vs Last Year',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build Well Depth Card
+  Widget _buildWellDepthCard() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final stationData = ref.watch(stationDataProvider);
+        
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.water_drop, color: Colors.teal[600], size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Well Depth',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.teal[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                stationData.when(
+                  data: (data) {
+                    final wellDepth = _getWellDepthFromAPI(data);
+                    return Text(
+                      '${wellDepth.toStringAsFixed(1)} m',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal[600],
+                      ),
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stack) => Text(
+                    'N/A',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Total depth',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  /// Build Monthly Forecast Card
+  Widget _buildMonthlyForecastCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Card(
+      elevation: 4,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDarkMode 
+                        ? [
+                            Colors.amber.withOpacity(0.2),
+                            Colors.amber.withOpacity(0.1),
+                          ]
+                        : [
+                            Colors.amber.withOpacity(0.1),
+                            Colors.amber.withOpacity(0.05),
+                          ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.calendar_month, 
+                    color: isDarkMode ? Colors.amber[400] : Colors.amber[600], 
+                    size: 20
+                  ),
+                ),
+                const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+                    'Monthly Forecast',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.amber[400] : Colors.amber[700],
+                    ),
+            ),
+          ),
+        ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${_getMonthlyForecast().toStringAsFixed(1)} m',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.amber[300] : Colors.amber[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Next month',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getForecastTrendColor().withOpacity(isDarkMode ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _getForecastTrend(),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: _getForecastTrendColor(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build Day Forecast Card
+  Widget _buildDayForecastCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Card(
+      elevation: 4,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDarkMode 
+                        ? [
+                            Colors.cyan.withOpacity(0.2),
+                            Colors.cyan.withOpacity(0.1),
+                          ]
+                        : [
+                            Colors.cyan.withOpacity(0.1),
+                            Colors.cyan.withOpacity(0.05),
+                          ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.today, 
+                    color: isDarkMode ? Colors.cyan[400] : Colors.cyan[600], 
+                    size: 20
+                  ),
+                ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    'Day Forecast',
+                    style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.cyan[400] : Colors.cyan[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
+            const SizedBox(height: 12),
+          Text(
+              '${_getDayForecast().toStringAsFixed(1)} m',
+            style: TextStyle(
+                fontSize: 20,
+              fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.cyan[300] : Colors.cyan[600],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+              'Tomorrow',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getDayForecastTrendColor().withOpacity(isDarkMode ? 0.2 : 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _getDayForecastTrend(),
+                style: TextStyle(
+              fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: _getDayForecastTrendColor(),
+                ),
+            ),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  /// Build Alerts and Notifications Card
+  Widget _buildAlertsNotificationsCard() {
+    final alerts = _getActiveAlerts();
+    return Card(
+      elevation: 6,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active,
+                    color: Colors.red[600],
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Alerts & Notifications',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: alerts.isNotEmpty ? Colors.red : Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                child: Text(
+                    '${alerts.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+            const SizedBox(height: 16),
+            
+            if (alerts.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green[600]),
+                    const SizedBox(width: 12),
+          Text(
+                      'No active alerts',
+                      style: TextStyle(
+              fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ...alerts.map((alert) => _buildAlertItem(alert)).toList(),
+              
+            const SizedBox(height: 12),
+            
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Navigate to detailed alerts screen
+                  context.go('/alerts');
+                },
+                icon: const Icon(Icons.notifications),
+                label: const Text('View All Alerts'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[600],
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build individual alert item
+  Widget _buildAlertItem(Map<String, dynamic> alert) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _getAlertColor(alert['type']).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _getAlertColor(alert['type']).withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _getAlertIcon(alert['type']),
+            color: _getAlertColor(alert['type']),
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  alert['title'],
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _getAlertColor(alert['type']),
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  alert['message'],
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            alert['time'],
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[400],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper methods for calculations and data using API
+  double _calculateAverageDepthFromAPI(Map<String, dynamic>? data) {
+    if (data == null) return 0.0;
+    
+    // Extract water level data from API response
+    final waterLevel = data['latestWaterLevel'] as double? ?? 0.0;
+    final historicalData = data['historicalData'] as List<dynamic>? ?? [];
+    
+    if (historicalData.isEmpty) return waterLevel;
+    
+    // Calculate average from historical data
+    double sum = waterLevel;
+    for (var item in historicalData) {
+      if (item is Map<String, dynamic>) {
+        final level = item['waterLevel'] as double? ?? 0.0;
+        sum += level;
+      }
+    }
+    
+    return sum / (historicalData.length + 1);
+  }
+
+  Map<String, double> _calculateMinMaxDepthFromAPI(Map<String, dynamic>? data) {
+    if (data == null) return {'min': 0.0, 'max': 0.0};
+    
+    final waterLevel = data['latestWaterLevel'] as double? ?? 0.0;
+    final historicalData = data['historicalData'] as List<dynamic>? ?? [];
+    
+    double minDepth = waterLevel;
+    double maxDepth = waterLevel;
+    
+    for (var item in historicalData) {
+      if (item is Map<String, dynamic>) {
+        final level = item['waterLevel'] as double? ?? 0.0;
+        if (level < minDepth) minDepth = level;
+        if (level > maxDepth) maxDepth = level;
+      }
+    }
+    
+    return {'min': minDepth, 'max': maxDepth};
+  }
+
+  double _calculateYearlyChangeFromAPI(Map<String, dynamic>? data) {
+    if (data == null) return 0.0;
+    
+    final currentLevel = data['latestWaterLevel'] as double? ?? 0.0;
+    final historicalData = data['historicalData'] as List<dynamic>? ?? [];
+    
+    if (historicalData.isEmpty) return 0.0;
+    
+    // Find data from one year ago (simplified - in real app, use proper date filtering)
+    final oneYearAgoData = historicalData.length > 12 
+        ? historicalData[historicalData.length - 12] 
+        : historicalData.first;
+    
+    double previousLevel = 0.0;
+    if (oneYearAgoData is Map<String, dynamic>) {
+      previousLevel = oneYearAgoData['waterLevel'] as double? ?? 0.0;
+    }
+    
+    // Positive means water level went down (bad), negative means it went up (good)
+    return currentLevel - previousLevel;
+  }
+
+  double _getWellDepthFromAPI(Map<String, dynamic>? data) {
+    if (data == null) return 0.0;
+    
+    return data['wellDepth'] as double? ?? 0.0;
+  }
+
+  double _getMonthlyForecast() {
+    // Mock monthly forecast
+    return 16.8 + (DateTime.now().millisecond % 15) / 10;
+  }
+
+  double _getDayForecast() {
+    // Mock day forecast
+    return 15.5 + (DateTime.now().millisecond % 8) / 10;
+  }
+
+  String _getForecastTrend() {
+    final trend = DateTime.now().millisecond % 3;
+    switch (trend) {
+      case 0: return 'STABLE';
+      case 1: return 'DECLINING';
+      case 2: return 'RISING';
+      default: return 'STABLE';
+    }
+  }
+
+  Color _getForecastTrendColor() {
+    switch (_getForecastTrend()) {
+      case 'STABLE': return Colors.blue;
+      case 'DECLINING': return Colors.red;
+      case 'RISING': return Colors.green;
+      default: return Colors.blue;
+    }
+  }
+
+  String _getDayForecastTrend() {
+    final trend = DateTime.now().millisecond % 3;
+    switch (trend) {
+      case 0: return 'STABLE';
+      case 1: return 'DECLINING';
+      case 2: return 'RISING';
+      default: return 'STABLE';
+    }
+  }
+
+  Color _getDayForecastTrendColor() {
+    switch (_getDayForecastTrend()) {
+      case 'STABLE': return Colors.blue;
+      case 'DECLINING': return Colors.red;
+      case 'RISING': return Colors.green;
+      default: return Colors.blue;
+    }
+  }
+
+  List<Map<String, dynamic>> _getActiveAlerts() {
+    // Mock alerts - in real app, this would come from a service
+    final alerts = <Map<String, dynamic>>[];
+    
+    // Add some mock alerts based on conditions
+    if (_getTrafficSignalLevel() == 'critical') {
+      alerts.add({
+        'type': 'critical',
+        'title': 'Critical Water Level',
+        'message': 'Water levels are critically low in your area',
+        'time': '2h ago',
+      });
+    }
+    
+    // In a real app, this would check actual API data for yearly change
+    // For now, we'll use mock logic
+    final mockYearlyChange = (DateTime.now().millisecond % 20) - 10;
+    if (mockYearlyChange > 5) {
+      alerts.add({
+        'type': 'warning',
+        'title': 'Rapid Decline',
+        'message': 'Water levels declining faster than normal',
+        'time': '1d ago',
+      });
+    }
+    
+    if (alerts.isEmpty) {
+      // Add a general info alert
+      alerts.add({
+        'type': 'info',
+        'title': 'System Update',
+        'message': 'All systems operating normally',
+        'time': '3h ago',
+      });
+    }
+    
+    return alerts;
+  }
+
+  Color _getAlertColor(String type) {
+    switch (type) {
+      case 'critical': return Colors.red;
+      case 'warning': return Colors.orange;
+      case 'info': return Colors.blue;
+      default: return Colors.grey;
+    }
+  }
+
+  IconData _getAlertIcon(String type) {
+    switch (type) {
+      case 'critical': return Icons.error;
+      case 'warning': return Icons.warning;
+      case 'info': return Icons.info;
+      default: return Icons.notifications;
+    }
+  }
+
   Widget _buildAnalyticsButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          // Navigate to analytics screen with location data
-          context.go('/analytics', extra: {
-            'selectedCity': selectedCity,
-            'selectedDistrict': selectedDistrict,
-            'selectedState': selectedState,
+          setState(() {
+            showAnalytics = !showAnalytics;
           });
         },
         style: ElevatedButton.styleFrom(
@@ -670,556 +2170,22 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.analytics, size: 24),
+            Icon(showAnalytics ? Icons.visibility_off : Icons.analytics, size: 24),
             const SizedBox(width: 12),
-            const Text(
-              'Show Analytics',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              showAnalytics ? 'Hide Analytics' : 'Show Analytics',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward, size: 20),
+            Icon(showAnalytics ? Icons.keyboard_arrow_up : Icons.arrow_forward, size: 20),
           ],
         ),
       ),
     );
   }
 
-  /// Build real data analytics for Tadepalligudem
-  Widget _buildRealDataAnalytics() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final stationData = ref.watch(stationDataProvider);
-        
-        return Card(
-          elevation: 8,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.water_drop,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Real-Time Groundwater Data',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                          Text(
-                            'Tadepalligudem Station (CGWHYD0514)',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        ref.read(refreshDataProvider)();
-                      },
-                      icon: const Icon(Icons.refresh),
-                      tooltip: 'Refresh Data',
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        context.go('/debug');
-                      },
-                      icon: const Icon(Icons.settings_applications),
-                      tooltip: 'Open Debug Screen',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                
-                stationData.when(
-                  data: (data) {
-                    if (data == null) {
-                      return const Center(
-                        child: Text('No data available'),
-                      );
-                    }
-                    
-                    return Column(
-                      children: [
-                        // Real data cards
-                        // Main data cards
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Current Water Level',
-                                '${data['latestWaterLevel']?.toStringAsFixed(2) ?? 'N/A'} ${data['waterLevelUnit'] ?? 'm'}',
-                                Icons.water_drop,
-                                Colors.blue,
-                                'Last updated: ${data['lastUpdated'] ?? 'N/A'}',
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Well Depth',
-                                '${data['wellDepth']?.toStringAsFixed(1) ?? 'N/A'} m',
-                                Icons.height,
-                                Colors.green,
-                                'Aquifer: ${data['aquiferType'] ?? 'N/A'}',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Additional data cards
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Data Points',
-                                '${data['dataPoints'] ?? 0}',
-                                Icons.analytics,
-                                Colors.orange,
-                                'Total measurements',
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Station Code',
-                                '${data['stationCode'] ?? 'N/A'}',
-                                Icons.location_on,
-                                Colors.purple,
-                                '${data['stationName'] ?? 'N/A'}',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Data source and quality info
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Data Source',
-                                '${data['dataSource'] ?? 'Unknown'}',
-                                Icons.cloud_download,
-                                Colors.teal,
-                                '${data['parsingStrategy'] ?? 'Unknown parsing'}',
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildRealDataCard(
-                                'Well Type',
-                                '${data['wellType'] ?? 'N/A'}',
-                                Icons.water,
-                                Colors.indigo,
-                                '${data['aquiferType'] ?? 'N/A'} aquifer',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Historical data chart section
-                        if (data['dataPoints'] != null && data['dataPoints'] > 0) ...[
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.timeline, color: Colors.blue.shade700),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Historical Data Trend',
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  height: 200,
-                                  child: _buildHistoricalChart(data),
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      // Navigate to detailed charts screen
-                                      context.go('/station/CGWHYD0514');
-                                    },
-                                    icon: const Icon(Icons.timeline),
-                                    label: const Text('View Detailed Charts'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        
-                        // Data quality and metadata
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.blue.shade700),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Station Information',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              _buildStationInfo(data),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Data Source Information',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Source: ${data['dataSource'] ?? 'National Water Informatics Centre (NWIC)'}',
-                                style: const TextStyle(color: Colors.black87),
-                              ),
-                              Text(
-                                'Agency: Central Ground Water Board (CGWB)',
-                                style: const TextStyle(color: Colors.black87),
-                              ),
-                              Text(
-                                'Data Period: 2013-2025',
-                                style: const TextStyle(color: Colors.black87),
-                              ),
-                              if (data['parsingStrategy'] != null)
-                                Text(
-                                  'Parsing: ${data['parsingStrategy']}',
-                                  style: const TextStyle(color: Colors.black54, fontSize: 12),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  error: (error, stack) => Center(
-                    child: Column(
-                      children: [
-                        const Icon(Icons.error, color: Colors.red, size: 48),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Failed to load data',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          error.toString(),
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            ref.read(refreshDataProvider)();
-                          },
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
-  /// Build historical chart for groundwater data
-  Widget _buildHistoricalChart(Map<String, dynamic> data) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final historicalData = ref.watch(historicalDataProvider({
-          'limit': 30, // Show last 30 data points
-        }));
-        
-        return historicalData.when(
-          data: (chartData) {
-            if (chartData.isEmpty) {
-              return const Center(
-                child: Text('No historical data available for chart'),
-              );
-            }
-            
-            // Create a simple line chart using basic widgets
-            return CustomPaint(
-              painter: WaterLevelChartPainter(chartData),
-              size: const Size(double.infinity, 200),
-            );
-          },
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          error: (error, stack) => Center(
-            child: Text('Chart error: $error'),
-          ),
-        );
-      },
-    );
-  }
-  
-  /// Build station information display
-  Widget _buildStationInfo(Map<String, dynamic> data) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow('Station Code', data['stationCode'] ?? 'N/A'),
-        _buildInfoRow('Station Name', data['stationName'] ?? 'N/A'),
-        _buildInfoRow('District', data['district'] ?? 'N/A'),
-        _buildInfoRow('State', data['state'] ?? 'N/A'),
-        _buildInfoRow('Coordinates', '${data['latitude'] ?? 'N/A'}, ${data['longitude'] ?? 'N/A'}'),
-        _buildInfoRow('Well Type', data['wellType'] ?? 'N/A'),
-        _buildInfoRow('Aquifer Type', data['aquiferType'] ?? 'N/A'),
-        _buildInfoRow('Well Depth', '${data['wellDepth']?.toStringAsFixed(1) ?? 'N/A'} m'),
-      ],
-    );
-  }
-  
-  /// Build info row widget
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.black54),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildRealDataCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    String description,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalyticsCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    String description,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecommendationItem(
-    String title,
-    String description,
-    IconData icon,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.green, size: 16),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Colors.black,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Location detection methods
   Future<void> _checkLocationPermission() async {
@@ -1492,3 +2458,4 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     await Geolocator.openAppSettings();
   }
 }
+

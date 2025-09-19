@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/theme_provider.dart';
 
 /// Settings screen for app configuration
@@ -23,6 +24,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Settings'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

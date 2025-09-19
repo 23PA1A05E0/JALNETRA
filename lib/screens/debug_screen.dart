@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/manual_data_provider.dart';
 import '../providers/water_well_depth_provider.dart';
 
@@ -21,6 +22,20 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
         title: const Text('Data Fetching Debug'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             onPressed: _runDebug,

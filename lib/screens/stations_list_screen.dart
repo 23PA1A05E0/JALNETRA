@@ -47,6 +47,19 @@ class _StationsListScreenState extends ConsumerState<StationsListScreen> {
       appBar: AppBar(
         title: const Text('DWLR Stations'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

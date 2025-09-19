@@ -353,16 +353,17 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   void _selectRole(WidgetRef ref, UserRole role, BuildContext context) {
     ref.read(userRoleProvider.notifier).setRole(role);
 
-    // Navigate to appropriate dashboard
+    // Navigate to appropriate dashboard using push instead of go
+    // This allows users to go back to role selection
     switch (role) {
       case UserRole.user:
-        context.go('/citizen-dashboard');
+        context.push('/citizen-dashboard');
         break;
       case UserRole.researcher:
-        context.go('/researcher-dashboard');
+        context.push('/researcher-dashboard');
         break;
       case UserRole.policyMaker:
-        context.go('/policy-makers-dashboard');
+        context.push('/policy-makers-dashboard');
         break;
     }
   }

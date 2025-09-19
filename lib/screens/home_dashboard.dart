@@ -36,6 +36,19 @@ class _HomeDashboardState extends ConsumerState<HomeDashboard> {
       appBar: AppBar(
         title: const Text('Groundwater Monitoring Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),

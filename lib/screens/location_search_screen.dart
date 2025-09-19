@@ -41,6 +41,19 @@ class _LocationSearchScreenState extends ConsumerState<LocationSearchScreen> {
       appBar: AppBar(
         title: const Text('Search by Location'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.clear_all),

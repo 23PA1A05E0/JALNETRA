@@ -36,6 +36,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       appBar: AppBar(
         title: Text('Analytics - ${widget.selectedCity ?? 'Unknown'}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             onPressed: () {
@@ -46,7 +59,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           IconButton(
             onPressed: () {
-              context.go('/debug');
+              context.push('/debug');
             },
             icon: const Icon(Icons.settings_applications),
             tooltip: 'Debug Tools',

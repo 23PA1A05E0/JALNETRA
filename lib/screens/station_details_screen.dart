@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/dwlr_provider.dart';
 import '../models/dwlr_station.dart';
 import '../widgets/water_level_chart.dart';
@@ -90,6 +91,19 @@ class _StationDetailsScreenState extends ConsumerState<StationDetailsScreen>
       appBar: AppBar(
         title: Text(station.stationName),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: GoRouter.of(context).canPop()
+          ? IconButton(
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                  ? Icons.arrow_back_ios
+                  : Icons.arrow_back,
+              ),
+              onPressed: () {
+                context.pop();
+              },
+              tooltip: 'Back',
+            )
+          : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
