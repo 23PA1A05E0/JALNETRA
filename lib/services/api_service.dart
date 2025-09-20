@@ -42,7 +42,6 @@ class ApiService {
 
         if (jsonData is Map<String, dynamic>) {
           logger.i('✅ Successfully fetched features data');
-          logger.i('📋 Available keys: ${jsonData.keys.toList()}');
           return jsonData;
         } else {
           logger.e('❌ Unexpected JSON structure: ${jsonData.runtimeType}');
