@@ -406,14 +406,14 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         gradient: LinearGradient(
           colors: isDarkMode 
             ? [
-                const Color(0xFF1a1a1a).withOpacity(0.9),
-                const Color(0xFF2a2a2a).withOpacity(0.8),
-                const Color(0xFF1a1a1a).withOpacity(0.9),
+                const Color(0xFF1a1a1a).withOpacity(0.4),
+                const Color(0xFF2a2a2a).withOpacity(0.4),
+                const Color(0xFF1a1a1a).withOpacity(0.4),
               ]
             : [
-                const Color(0xFFFAFAFA), // Very light gray
-                const Color(0xFFF5F5F5), // Light gray
-                const Color(0xFFFAFAFA), // Very light gray
+                const Color(0xFFFAFAFA).withOpacity(0.4), // Very light gray
+                const Color(0xFFF5F5F5).withOpacity(0.4), // Light gray
+                const Color(0xFFFAFAFA).withOpacity(0.4), // Very light gray
               ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -592,12 +592,12 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         gradient: LinearGradient(
           colors: Theme.of(context).brightness == Brightness.dark 
             ? [
-                const Color(0xFF1a1a1a).withOpacity(0.8),
-                const Color(0xFF2a2a2a).withOpacity(0.6),
+                const Color(0xFF1a1a1a).withOpacity(0.4),
+                const Color(0xFF2a2a2a).withOpacity(0.4),
               ]
             : [
-                const Color(0xFFFAFAFA).withOpacity(0.9), // Very light background
-                const Color(0xFFF0F0F0).withOpacity(0.8), // Subtle contrast
+                const Color(0xFFFAFAFA).withOpacity(0.4), // Very light background
+                const Color(0xFFF0F0F0).withOpacity(0.4), // Subtle contrast
               ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
