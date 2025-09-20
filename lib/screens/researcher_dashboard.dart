@@ -521,10 +521,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -543,18 +543,18 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
+            Expanded(
+              child: Text(
                     'Data Download Center',
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                       color: const Color(0xFF6A1B9A),
-                    ),
-                  ),
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
             const SizedBox(height: 24),
             
             // Location Selection
@@ -649,8 +649,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             ),
             
             if (selectedState != null) ...[
-              const SizedBox(height: 16),
-              
+            const SizedBox(height: 16),
+            
               // District dropdown
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
@@ -718,10 +718,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      children: [
             Row(
               children: [
                 Icon(
@@ -735,7 +735,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF6A1B9A),
+                  color: const Color(0xFF6A1B9A),
                   ),
                 ),
               ],
@@ -746,7 +746,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             Row(
               children: [
                 Expanded(child: _buildAverageDepthCard()),
-                const SizedBox(width: 12),
+                    const SizedBox(width: 12),
                 Expanded(child: _buildMinMaxDepthCard()),
               ],
             ),
@@ -783,27 +783,27 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           ),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          children: [
+                      child: Column(
+                        children: [
             Icon(
               Icons.download,
               color: Colors.white,
               size: 32,
             ),
             const SizedBox(height: 12),
-            Text(
+                          Text(
               'Download Excel Data for $selectedCity',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.bold,
                 color: Colors.white,
-              ),
-            ),
+                            ),
+                          ),
             const SizedBox(height: 8),
-            Text(
+                          Text(
               'Download comprehensive groundwater data in Excel format including historical records, predictions, and analytics',
-              style: TextStyle(
-                fontSize: 14,
+                style: TextStyle(
+                        fontSize: 14,
                 color: Colors.white.withOpacity(0.9),
               ),
               textAlign: TextAlign.center,
@@ -821,11 +821,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
     );
   }
 

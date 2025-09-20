@@ -8,6 +8,7 @@ import '../providers/location_search_provider.dart';
 import '../providers/manual_data_provider.dart';
 import '../providers/groundwater_data_provider.dart';
 import '../providers/prediction_forecast_provider.dart';
+import '../services/api_service.dart';
 import 'package:logger/logger.dart';
 
 final logger = Logger();
@@ -38,6 +39,11 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   Position? _currentPosition;
   String _selectedPredictionPeriod = '1week';
   Placemark? _currentPlacemark;
+  
+  // API data state
+  Map<String, dynamic>? _apiAnalyticsData;
+  bool _isLoadingApiData = false;
+  String? _apiErrorMessage;
 
   // All Indian states and union territories (canonical display names)
   final List<String> indianStates = const [
@@ -401,8 +407,13 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             if (showAnalytics &&
                 selectedState != null &&
                 selectedDistrict != null &&
-                selectedCity != null)
+                selectedCity != null) ...[
+              // Show API error message if any
+              if (_apiErrorMessage != null)
+                _buildApiErrorMessage(),
+              
               _buildNewFeaturesSection(),
+            ],
 
             const SizedBox(height: 24),
 
@@ -990,7 +1001,61 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     );
   }
 
-  /// Build new features section with all requested features
+  /// Build API error message widget
+  Widget _buildApiErrorMessage() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red[600],
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'API Data Unavailable',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _apiErrorMessage ?? 'Unknown error',
+                  style: TextStyle(
+                    color: Colors.red[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Showing mock data instead',
+                  style: TextStyle(
+                    color: Colors.orange[600],
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNewFeaturesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1210,7 +1275,6 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   Widget _buildAverageDepthCard() {
     return Consumer(
       builder: (context, ref, child) {
-        final stationData = ref.watch(stationDataProvider);
         
         return Card(
           elevation: 4,
@@ -1245,27 +1309,45 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                           ],
                         ),
                 const SizedBox(height: 12),
-                stationData.when(
-                  data: (data) {
-                    final avgDepth = _calculateAverageDepthFromAPI(data);
-                    return Text(
+                Builder(
+                  builder: (context) {
+                    final analyticsData = _getAnalyticsData();
+                    final avgDepth = analyticsData['averageDepth'] as double? ?? 0.0;
+                    final dataSource = analyticsData['dataSource'] as String? ?? 'Mock Data';
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                       '${avgDepth.toStringAsFixed(1)} m',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.blue[600],
                       ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              dataSource == 'API Data' ? Icons.cloud_done : Icons.sim_card,
+                              size: 12,
+                              color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dataSource,
+                    style: TextStyle(
+                                fontSize: 10,
+                                color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     );
                   },
-                  loading: () => const CircularProgressIndicator(),
-                  error: (error, stack) => Text(
-                    'N/A',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1287,7 +1369,6 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   Widget _buildMinMaxDepthCard() {
     return Consumer(
       builder: (context, ref, child) {
-        final stationData = ref.watch(stationDataProvider);
         
         return Card(
           elevation: 4,
@@ -1322,10 +1403,16 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                           ],
                         ),
                 const SizedBox(height: 12),
-                stationData.when(
-                  data: (data) {
-                    final minMax = _calculateMinMaxDepthFromAPI(data);
-                    return Row(
+                Builder(
+                  builder: (context) {
+                    final analyticsData = _getAnalyticsData();
+                    final minDepth = analyticsData['minDepth'] as double? ?? 0.0;
+                    final maxDepth = analyticsData['maxDepth'] as double? ?? 0.0;
+                    final dataSource = analyticsData['dataSource'] as String? ?? 'Mock Data';
+                    
+                    return Column(
+                      children: [
+                        Row(
                           children: [
                             Expanded(
                           child: Column(
@@ -1339,7 +1426,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                                 ),
                               ),
                               Text(
-                                '${minMax['min']?.toStringAsFixed(1) ?? 'N/A'} m',
+                                    '${minDepth.toStringAsFixed(1)} m',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1361,7 +1448,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                                 ),
                               ),
                               Text(
-                                '${minMax['max']?.toStringAsFixed(1) ?? 'N/A'} m',
+                                    '${maxDepth.toStringAsFixed(1)} m',
                                 style: TextStyle(
                                   fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -1372,15 +1459,29 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                                 ),
                         ),
                       ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                    children: [
+                            Icon(
+                              dataSource == 'API Data' ? Icons.cloud_done : Icons.sim_card,
+                              size: 12,
+                              color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dataSource,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     );
                   },
-                  loading: () => const CircularProgressIndicator(),
-                  error: (error, stack) => Row(
-                    children: [
-                      Expanded(child: Text('N/A', style: TextStyle(color: Colors.grey[600]))),
-                      Expanded(child: Text('N/A', style: TextStyle(color: Colors.grey[600]))),
-                    ],
-                                  ),
                                 ),
                               ],
                             ),
@@ -2278,7 +2379,11 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
+          if (!showAnalytics) {
+            // Fetch API data when showing analytics
+            await _fetchApiAnalyticsData();
+          }
           setState(() {
             showAnalytics = !showAnalytics;
           });
@@ -2292,7 +2397,26 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           ),
           elevation: 6,
         ),
-        child: Row(
+        child: _isLoadingApiData
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Loading Analytics...',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              )
+            : Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(showAnalytics ? Icons.visibility_off : Icons.analytics, size: 24),
@@ -2581,6 +2705,88 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
 
   Future<void> _openAppSettings() async {
     await Geolocator.openAppSettings();
+  }
+
+  /// Fetch analytics data from API
+  Future<void> _fetchApiAnalyticsData() async {
+    if (selectedCity == null) {
+      _apiErrorMessage = 'Please select a location first';
+      return;
+    }
+
+    setState(() {
+      _isLoadingApiData = true;
+      _apiErrorMessage = null;
+    });
+
+    try {
+      final apiService = ApiService();
+      final apiData = await apiService.getFeaturesForLocation(selectedCity!);
+      
+      if (apiData != null) {
+        final analyticsData = apiService.extractAnalyticsData(apiData);
+        setState(() {
+          _apiAnalyticsData = analyticsData;
+          _isLoadingApiData = false;
+        });
+        logger.i('✅ API analytics data loaded for $selectedCity');
+      } else {
+        setState(() {
+          _apiErrorMessage = 'No data available for $selectedCity';
+          _isLoadingApiData = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _apiErrorMessage = 'Error loading data: $e';
+        _isLoadingApiData = false;
+      });
+      logger.e('❌ Error fetching API analytics: $e');
+    }
+  }
+
+  /// Get analytics data (API data if available, otherwise mock data)
+  Map<String, dynamic> _getAnalyticsData() {
+    if (_apiAnalyticsData != null && _apiAnalyticsData!.isNotEmpty) {
+      return _apiAnalyticsData!;
+    }
+    
+    // Fallback to mock data
+    return {
+      'stationCode': 'MOCK',
+      'stationName': selectedCity ?? 'Unknown',
+      'averageDepth': _getMockAverageDepth(),
+      'minDepth': _getMockMinDepth(),
+      'maxDepth': _getMockMaxDepth(),
+      'currentLevel': _getMockCurrentLevel(),
+      'yearlyChange': _getMockYearlyChange(),
+      'lastUpdated': DateTime.now().toIso8601String(),
+      'dataPoints': 365,
+      'aquiferType': 'Alluvial',
+      'wellType': 'Bore Well',
+      'dataSource': 'Mock Data',
+    };
+  }
+
+  /// Mock data methods
+  double _getMockAverageDepth() {
+    return 15.5 + (DateTime.now().millisecond % 8) / 10;
+  }
+
+  double _getMockMinDepth() {
+    return 12.0 + (DateTime.now().millisecond % 5) / 10;
+  }
+
+  double _getMockMaxDepth() {
+    return 18.0 + (DateTime.now().millisecond % 6) / 10;
+  }
+
+  double _getMockCurrentLevel() {
+    return 16.2 + (DateTime.now().millisecond % 7) / 10;
+  }
+
+  double _getMockYearlyChange() {
+    return -0.5 + (DateTime.now().millisecond % 3) / 10;
   }
 }
 

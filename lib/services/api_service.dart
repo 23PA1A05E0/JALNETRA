@@ -1,382 +1,206 @@
-import 'package:dio/dio.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
-import '../models/station.dart';
-import '../models/measurement.dart';
-import '../models/recharge_estimate.dart';
 
-/// API service for communicating with the JALNETRA backend
+final logger = Logger();
+
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8080/api'; // Local Dart backend
-  static const String _apiKey = 'your-api-key-here'; // TODO: Move to secure storage
+  static const String _baseUrl = 'https://groundwater-level-predictor-backend.onrender.com';
   
-  late final Dio _dio;
-  final Logger _logger = Logger();
+  /// Location codes mapping for API data matching
+  static const Map<String, String> locationCodes = {
+    'Addanki': 'CGWHYD0500',
+    'Akkireddipalem': 'CGWHYD0511',
+    'Anantapur': 'CGWHYD0401',
+    'Bapulapadu': 'CGWHYD0485',
+    'Chittoor': 'CGWHYD2038',
+    'Gudur': 'CGWHYD2062',
+    'Kakinada': 'CGWHYD0447',
+    'Sultan nagaram': 'CGWHYD2060',
+    'Tadepalligudem': 'CGWHYD0514',
+    'Tenali': 'CGWHYD2053',
+  };
 
-  ApiService() {
-    _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
+  /// Fetch features data from the API
+  Future<Map<String, dynamic>> fetchFeatures() async {
+    try {
+      logger.i('🌊 Fetching features from API...');
+      
+      final res = await http.get(
+        Uri.parse("$_baseUrl/features"),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_apiKey',
-      },
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-    ));
+          'Accept': 'application/json',
+        },
+      );
 
-    // Add interceptors for logging and error handling
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (obj) => _logger.d(obj),
-    ));
+      logger.i('📡 API Response Status: ${res.statusCode}');
 
-    _dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) {
-        _logger.e('API Error: ${error.message}');
-        handler.next(error);
-      },
-    ));
+      if (res.statusCode == 200) {
+        final dynamic jsonData = jsonDecode(res.body);
+        logger.i('📊 JSON Data Type: ${jsonData.runtimeType}');
+
+        if (jsonData is Map<String, dynamic>) {
+          logger.i('✅ Successfully fetched features data');
+          logger.i('📋 Available keys: ${jsonData.keys.toList()}');
+          return jsonData;
+        } else {
+          logger.e('❌ Unexpected JSON structure: ${jsonData.runtimeType}');
+          throw Exception("Unexpected JSON structure - expected Map");
+        }
+      } else {
+        logger.e('❌ Failed to fetch data: ${res.statusCode}');
+        throw Exception("Failed to fetch data: ${res.statusCode}");
+      }
+    } catch (e) {
+      logger.e('❌ Error fetching features: $e');
+      rethrow;
+    }
   }
 
-  /// Get all monitoring stations
-  Future<List<Station>> getStations() async {
+  /// Get features data for a specific location
+  Future<Map<String, dynamic>?> getFeaturesForLocation(String locationName) async {
     try {
-      _logger.i('Fetching stations from Dart backend...');
+      final stationCode = locationCodes[locationName];
+      if (stationCode == null) {
+        logger.e('❌ No station code found for location: $locationName');
+        return null;
+      }
+
+      logger.i('🔍 Looking for data for $locationName (Code: $stationCode)');
       
-      final response = await _dio.get('/stations');
+      final featuresData = await fetchFeatures();
       
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['success'] == true && data['data'] != null) {
-          final stationsList = data['data'] as List;
-          return stationsList.map((json) => Station.fromJson(json)).toList();
+      // Extract station summary data for the specific station code
+      final stationSummary = featuresData['station_summary'] as Map<String, dynamic>?;
+      if (stationSummary != null && stationSummary.containsKey(stationCode)) {
+        final stationData = stationSummary[stationCode] as Map<String, dynamic>;
+        logger.i('✅ Found data for $locationName');
+        
+        // Return the station data with additional context
+        return {
+          'stationCode': stationCode,
+          'stationName': locationName,
+          'stationData': stationData,
+          'averageDepth': stationData['avg_depth'],
+          'maxDepth': stationData['max_depth'],
+          'minDepth': stationData['min_depth'],
+          'yearlyChange': stationData['yearly_change'],
+          'dataSource': 'API Data',
+        };
+      }
+      
+      logger.w('⚠️ No data found for $locationName ($stationCode)');
+      return null;
+    } catch (e) {
+      logger.e('❌ Error getting features for $locationName: $e');
+      return null;
+    }
+  }
+
+  /// Get all available locations from the API
+  Future<List<String>> getAvailableLocations() async {
+    try {
+      final featuresData = await fetchFeatures();
+      final locations = <String>[];
+      
+      // Extract station codes from station_summary
+      final stationSummary = featuresData['station_summary'] as Map<String, dynamic>?;
+      if (stationSummary != null) {
+        for (final stationCode in stationSummary.keys) {
+          // Find location name from station code
+          final locationName = locationCodes.entries
+              .where((entry) => entry.value == stationCode)
+              .map((entry) => entry.key)
+              .firstOrNull;
+          
+          if (locationName != null && !locations.contains(locationName)) {
+            locations.add(locationName);
+          }
         }
       }
       
-      // Fallback to mock data if API fails
-      _logger.w('API call failed, using mock data');
-      return _getMockStations();
+      logger.i('📍 Available locations: $locations');
+      return locations;
     } catch (e) {
-      _logger.e('Error fetching stations: $e');
-      _logger.i('Falling back to mock data');
-      return _getMockStations();
+      logger.e('❌ Error getting available locations: $e');
+      return locationCodes.keys.toList(); // Fallback to all known locations
     }
   }
 
-  /// Get measurements for a specific station within a time range
-  /// TODO: Implement actual API call with proper filtering
-  Future<List<Measurement>> getMeasurements({
-    required String stationId,
-    required DateTime startTime,
-    required DateTime endTime,
-    required TimeInterval interval,
-  }) async {
+  /// Extract analytics data from API response
+  Map<String, dynamic> extractAnalyticsData(Map<String, dynamic> apiData) {
     try {
-      _logger.i('Fetching measurements for station $stationId from $startTime to $endTime');
+      // Handle the new API structure where data is already extracted
+      if (apiData.containsKey('stationCode') && apiData.containsKey('averageDepth')) {
+        return {
+          'stationCode': apiData['stationCode'],
+          'stationName': apiData['stationName'],
+          'averageDepth': apiData['averageDepth'] as double? ?? 0.0,
+          'minDepth': apiData['minDepth'] as double? ?? 0.0,
+          'maxDepth': apiData['maxDepth'] as double? ?? 0.0,
+          'currentLevel': apiData['averageDepth'] as double? ?? 0.0, // Use average as current
+          'yearlyChange': _extractYearlyChange(apiData['yearlyChange']),
+          'lastUpdated': DateTime.now().toIso8601String(),
+          'dataPoints': 365, // Default value
+          'aquiferType': 'Unknown',
+          'wellType': 'Bore Well',
+          'dataSource': 'API Data',
+        };
+      }
       
-      // TODO: Replace with actual API call
-      // final response = await _dio.get('/stations/$stationId/measurements', queryParameters: {
-      //   'start_time': startTime.toIso8601String(),
-      //   'end_time': endTime.toIso8601String(),
-      //   'interval': interval.name,
-      // });
-      // return (response.data as List)
-      //     .map((json) => Measurement.fromJson(json))
-      //     .toList();
-      
-      // Mock data for development
-      await Future.delayed(const Duration(seconds: 1));
-      return _getMockMeasurements(stationId, startTime, endTime, interval);
+      // Fallback for old structure
+      return {
+        'stationCode': apiData['station_code'] ?? apiData['stationCode'] ?? apiData['station_id'],
+        'stationName': apiData['station_name'] ?? apiData['stationName'] ?? apiData['name'],
+        'averageDepth': _extractNumericValue(apiData, ['average_depth', 'avg_depth', 'mean_depth']),
+        'minDepth': _extractNumericValue(apiData, ['min_depth', 'minimum_depth']),
+        'maxDepth': _extractNumericValue(apiData, ['max_depth', 'maximum_depth']),
+        'currentLevel': _extractNumericValue(apiData, ['current_level', 'currentLevel', 'water_level']),
+        'yearlyChange': _extractNumericValue(apiData, ['yearly_change', 'annual_change', 'trend']),
+        'lastUpdated': apiData['last_updated'] ?? apiData['lastUpdated'] ?? apiData['timestamp'],
+        'dataPoints': apiData['data_points'] ?? apiData['dataPoints'] ?? apiData['count'],
+        'aquiferType': apiData['aquifer_type'] ?? apiData['aquiferType'] ?? apiData['aquifer'],
+        'wellType': apiData['well_type'] ?? apiData['wellType'] ?? apiData['type'],
+        'dataSource': 'API Data',
+      };
     } catch (e) {
-      _logger.e('Error fetching measurements: $e');
-      rethrow;
+      logger.e('❌ Error extracting analytics data: $e');
+      return {};
     }
   }
 
-  /// Subscribe to real-time updates for a station
-  /// TODO: Implement WebSocket connection
-  Stream<Measurement> subscribeRealtime(String stationId) async* {
-    _logger.i('Subscribing to real-time updates for station $stationId');
-    
-    // TODO: Implement WebSocket connection
-    // final socket = WebSocketChannel.connect(Uri.parse('wss://api.jalnetra.com/ws/$stationId'));
-    // await for (final data in socket.stream) {
-    //   final measurement = Measurement.fromJson(jsonDecode(data));
-    //   yield measurement;
-    // }
-    
-    // Mock real-time data for development
-    while (true) {
-      await Future.delayed(const Duration(seconds: 5));
-      yield _generateMockRealtimeMeasurement(stationId);
+  /// Extract yearly change value from API data
+  double _extractYearlyChange(dynamic yearlyChangeData) {
+    if (yearlyChangeData is Map<String, dynamic>) {
+      // Get the latest year's change
+      final years = yearlyChangeData.keys.toList()..sort();
+      if (years.isNotEmpty) {
+        final latestYear = years.last;
+        final change = yearlyChangeData[latestYear];
+        if (change is num) {
+          return change.toDouble();
+        }
+      }
+    } else if (yearlyChangeData is num) {
+      return yearlyChangeData.toDouble();
     }
+    return 0.0;
   }
 
-  /// Get recharge estimates for a station
-  /// TODO: Implement actual API call
-  Future<List<RechargeEstimate>> getRechargeEstimates({
-    required String stationId,
-    required DateTime startTime,
-    required DateTime endTime,
-  }) async {
-    try {
-      _logger.i('Fetching recharge estimates for station $stationId');
-      
-      // TODO: Replace with actual API call
-      // final response = await _dio.get('/stations/$stationId/recharge-estimates', queryParameters: {
-      //   'start_time': startTime.toIso8601String(),
-      //   'end_time': endTime.toIso8601String(),
-      // });
-      // return (response.data as List)
-      //     .map((json) => RechargeEstimate.fromJson(json))
-      //     .toList();
-      
-      // Mock data for development
-      await Future.delayed(const Duration(seconds: 1));
-      return _getMockRechargeEstimates(stationId, startTime, endTime);
-    } catch (e) {
-      _logger.e('Error fetching recharge estimates: $e');
-      rethrow;
+  /// Extract numeric value from API data with multiple possible keys
+  double _extractNumericValue(Map<String, dynamic> data, List<String> possibleKeys) {
+    for (final key in possibleKeys) {
+      final value = data[key];
+      if (value != null) {
+        if (value is num) {
+          return value.toDouble();
+        } else if (value is String) {
+          final parsed = double.tryParse(value);
+          if (parsed != null) return parsed;
+        }
+      }
     }
-  }
-
-  /// Update station configuration
-  /// TODO: Implement actual API call
-  Future<void> updateStationConfig({
-    required String stationId,
-    required RechargeConfig config,
-  }) async {
-    try {
-      _logger.i('Updating station config for $stationId');
-      
-      // TODO: Replace with actual API call
-      // await _dio.put('/stations/$stationId/config', data: config.toJson());
-      
-      // Mock success for development
-      await Future.delayed(const Duration(seconds: 1));
-      _logger.i('Station config updated successfully');
-    } catch (e) {
-      _logger.e('Error updating station config: $e');
-      rethrow;
-    }
-  }
-
-  /// Get station alerts
-  /// TODO: Implement actual API call
-  Future<List<RechargeAlert>> getStationAlerts({
-    required String stationId,
-    required bool unreadOnly,
-  }) async {
-    try {
-      _logger.i('Fetching alerts for station $stationId');
-      
-      // TODO: Replace with actual API call
-      // final response = await _dio.get('/stations/$stationId/alerts', queryParameters: {
-      //   'unread_only': unreadOnly,
-      // });
-      // return (response.data as List)
-      //     .map((json) => RechargeAlert.fromJson(json))
-      //     .toList();
-      
-      // Mock data for development
-      await Future.delayed(const Duration(seconds: 1));
-      return _getMockAlerts(stationId, unreadOnly);
-    } catch (e) {
-      _logger.e('Error fetching alerts: $e');
-      rethrow;
-    }
-  }
-
-  // Mock data generators for development
-  List<Station> _getMockStations() {
-    return [
-      Station(
-        id: 'station_001',
-        name: 'Central Monitoring Station',
-        description: 'Primary groundwater monitoring station in downtown area',
-        latitude: 28.6139,
-        longitude: 77.2090,
-        elevation: 216.0,
-        status: 'active',
-        lastUpdated: DateTime.now().subtract(const Duration(minutes: 5)),
-        region: 'North',
-        district: 'Central Delhi',
-        state: 'Delhi',
-        country: 'India',
-        parameters: ['water_level', 'temperature', 'ph', 'conductivity'],
-        currentWaterLevel: 15.2,
-        currentTemperature: 25.5,
-        currentPh: 7.1,
-        rechargeRate: 120.5,
-        isRechargeActive: true,
-        targetYield: 150.0,
-      ),
-      Station(
-        id: 'station_002',
-        name: 'Industrial Zone Station',
-        description: 'Monitoring station near industrial area',
-        latitude: 28.6200,
-        longitude: 77.2200,
-        elevation: 220.0,
-        status: 'active',
-        lastUpdated: DateTime.now().subtract(const Duration(minutes: 3)),
-        region: 'East',
-        district: 'East Delhi',
-        state: 'Delhi',
-        country: 'India',
-        parameters: ['water_level', 'temperature', 'ph'],
-        currentWaterLevel: 18.7,
-        currentTemperature: 27.2,
-        currentPh: 6.8,
-        rechargeRate: 95.3,
-        isRechargeActive: false,
-        targetYield: 100.0,
-      ),
-      Station(
-        id: 'station_003',
-        name: 'Residential Area Station',
-        description: 'Station monitoring residential groundwater',
-        latitude: 28.6000,
-        longitude: 77.1900,
-        elevation: 210.0,
-        status: 'maintenance',
-        lastUpdated: DateTime.now().subtract(const Duration(hours: 2)),
-        region: 'South',
-        district: 'South Delhi',
-        state: 'Delhi',
-        country: 'India',
-        parameters: ['water_level', 'temperature', 'ph', 'turbidity'],
-        currentWaterLevel: 12.8,
-        currentTemperature: 24.8,
-        currentPh: 7.3,
-        rechargeRate: 0.0,
-        isRechargeActive: false,
-        targetYield: 80.0,
-      ),
-    ];
-  }
-
-  List<Measurement> _getMockMeasurements(
-    String stationId,
-    DateTime startTime,
-    DateTime endTime,
-    TimeInterval interval,
-  ) {
-    final measurements = <Measurement>[];
-    final stepDuration = _getStepDuration(interval);
-    
-    for (var current = startTime; current.isBefore(endTime); current = current.add(stepDuration)) {
-      measurements.add(Measurement(
-        id: '${stationId}_${current.millisecondsSinceEpoch}',
-        stationId: stationId,
-        timestamp: current,
-        waterLevel: 15.0 + (current.hour % 24) * 0.1,
-        temperature: 25.0 + (current.hour % 24) * 0.2,
-        ph: 7.0 + (current.hour % 24) * 0.05,
-        conductivity: 500.0 + (current.hour % 24) * 10.0,
-        turbidity: 2.0 + (current.hour % 24) * 0.1,
-        dissolvedOxygen: 8.0 + (current.hour % 24) * 0.1,
-        rechargeRate: 100.0 + (current.hour % 24) * 2.0,
-        batteryLevel: 85.0 - (current.hour % 24) * 0.5,
-        signalStrength: 90.0 - (current.hour % 24) * 0.3,
-        quality: 'good',
-        notes: 'Automated measurement',
-      ));
-    }
-    
-    return measurements;
-  }
-
-  Duration _getStepDuration(TimeInterval interval) {
-    switch (interval) {
-      case TimeInterval.minute:
-        return const Duration(minutes: 1);
-      case TimeInterval.hour:
-        return const Duration(hours: 1);
-      case TimeInterval.day:
-        return const Duration(days: 1);
-      case TimeInterval.week:
-        return const Duration(days: 7);
-      case TimeInterval.month:
-        return const Duration(days: 30);
-    }
-  }
-
-  Measurement _generateMockRealtimeMeasurement(String stationId) {
-    final now = DateTime.now();
-    return Measurement(
-      id: '${stationId}_realtime_${now.millisecondsSinceEpoch}',
-      stationId: stationId,
-      timestamp: now,
-      waterLevel: 15.0 + (now.second % 60) * 0.01,
-      temperature: 25.0 + (now.second % 60) * 0.02,
-      ph: 7.0 + (now.second % 60) * 0.005,
-      conductivity: 500.0 + (now.second % 60) * 1.0,
-      turbidity: 2.0 + (now.second % 60) * 0.01,
-      dissolvedOxygen: 8.0 + (now.second % 60) * 0.01,
-      rechargeRate: 100.0 + (now.second % 60) * 0.2,
-      batteryLevel: 85.0 - (now.second % 60) * 0.05,
-      signalStrength: 90.0 - (now.second % 60) * 0.03,
-      quality: 'good',
-      notes: 'Real-time measurement',
-    );
-  }
-
-  List<RechargeEstimate> _getMockRechargeEstimates(
-    String stationId,
-    DateTime startTime,
-    DateTime endTime,
-  ) {
-    final estimates = <RechargeEstimate>[];
-    final stepDuration = const Duration(hours: 1);
-    
-    for (var current = startTime; current.isBefore(endTime); current = current.add(stepDuration)) {
-      estimates.add(RechargeEstimate(
-        id: '${stationId}_estimate_${current.millisecondsSinceEpoch}',
-        stationId: stationId,
-        timestamp: current,
-        estimatedRechargeRate: 100.0 + (current.hour % 24) * 2.0,
-        confidence: 0.8 + (current.hour % 24) * 0.01,
-        method: RechargeMethod.waterLevelChange,
-        parameters: {
-          'water_level_change': 0.1,
-          'temperature_factor': 0.05,
-          'ph_factor': 0.02,
-        },
-        status: 'calculated',
-        notes: 'Automated calculation',
-        actualRechargeRate: 100.0 + (current.hour % 24) * 1.8,
-        accuracy: 85.0 + (current.hour % 24) * 0.5,
-      ));
-    }
-    
-    return estimates;
-  }
-
-  List<RechargeAlert> _getMockAlerts(String stationId, bool unreadOnly) {
-    return [
-      RechargeAlert(
-        id: 'alert_001',
-        stationId: stationId,
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-        type: AlertType.lowYield,
-        message: 'Recharge rate below threshold',
-        severity: AlertSeverity.medium,
-        isRead: !unreadOnly,
-        actionRequired: 'Check pump status',
-        metadata: {'threshold': 100.0, 'current_rate': 85.0},
-      ),
-      RechargeAlert(
-        id: 'alert_002',
-        stationId: stationId,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
-        type: AlertType.sensorFailure,
-        message: 'Temperature sensor offline',
-        severity: AlertSeverity.high,
-        isRead: false,
-        actionRequired: 'Schedule maintenance',
-        metadata: {'sensor_id': 'temp_001'},
-      ),
-    ];
+    return 0.0; // Default value if not found
   }
 }
