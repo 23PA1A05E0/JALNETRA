@@ -7,6 +7,7 @@ import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
 import '../providers/groundwater_data_provider.dart';
 import '../providers/prediction_forecast_provider.dart';
+import '../services/api_service.dart';
 import 'package:logger/logger.dart';
 
 final logger = Logger();
@@ -36,6 +37,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   Position? _currentPosition;
   Placemark? _currentPlacemark;
   String _selectedPredictionPeriod = '1week';
+  
+  // API-related state variables
+  Map<String, dynamic>? _apiAnalyticsData;
+  bool _isLoadingApiData = false;
+  String? _apiErrorMessage;
 
   // All Indian states and union territories
   final List<String> indianStates = const [
@@ -220,6 +226,148 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           ],
                   ),
                 ),
+    );
+  }
+
+  /// Fetch analytics data from API
+  Future<void> _fetchApiAnalyticsData() async {
+    if (selectedCity == null) {
+      _apiErrorMessage = 'Please select a location first';
+      return;
+    }
+
+    setState(() {
+      _isLoadingApiData = true;
+      _apiErrorMessage = null;
+    });
+
+    try {
+      final apiService = ApiService();
+      final apiData = await apiService.getFeaturesForLocation(selectedCity!);
+      
+      if (apiData != null && apiData.isNotEmpty) {
+        final analyticsData = apiService.extractAnalyticsData(apiData);
+        setState(() {
+          _apiAnalyticsData = analyticsData;
+          _isLoadingApiData = false;
+        });
+        logger.i('✅ API analytics data loaded for $selectedCity');
+      } else {
+        setState(() {
+          _apiErrorMessage = 'No data available for $selectedCity from API';
+          _isLoadingApiData = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _apiErrorMessage = 'Error loading data from API: $e';
+        _isLoadingApiData = false;
+      });
+      logger.e('❌ Error fetching API analytics: $e');
+    }
+  }
+
+  /// Get analytics data (API data if available, otherwise mock data)
+  Map<String, dynamic> _getAnalyticsData() {
+    if (_apiAnalyticsData != null && _apiAnalyticsData!.isNotEmpty) {
+      return _apiAnalyticsData!;
+    }
+    
+    // Fallback to mock data
+    return {
+      'stationCode': 'MOCK',
+      'stationName': selectedCity ?? 'Unknown',
+      'averageDepth': _getMockAverageDepth(),
+      'minDepth': _getMockMinDepth(),
+      'maxDepth': _getMockMaxDepth(),
+      'currentLevel': _getMockCurrentLevel(),
+      'yearlyChange': _getMockYearlyChange(),
+      'lastUpdated': DateTime.now().toIso8601String(),
+      'dataPoints': 365,
+      'aquiferType': 'Alluvial',
+      'wellType': 'Bore Well',
+      'dataSource': 'Mock Data',
+    };
+  }
+
+  /// Mock data generation methods
+  double _getMockAverageDepth() {
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    return -5.0 - (random / 20);
+  }
+
+  double _getMockMinDepth() {
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    return -8.0 - (random / 15);
+  }
+
+  double _getMockMaxDepth() {
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    return -2.0 - (random / 25);
+  }
+
+  double _getMockCurrentLevel() {
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    return -6.0 - (random / 20);
+  }
+
+  double _getMockYearlyChange() {
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    return -0.5 - (random / 200);
+  }
+
+  /// Build API error message widget
+  Widget _buildApiErrorMessage() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red[600],
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'API Data Unavailable',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _apiErrorMessage ?? 'Unknown error',
+                  style: TextStyle(
+                    color: Colors.red[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Showing mock data instead',
+                  style: TextStyle(
+                    color: Colors.orange[600],
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1253,20 +1401,49 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   Widget _buildAnalyticsButton() {
     return Center(
       child: ElevatedButton(
-        onPressed: () => setState(() => showAnalytics = !showAnalytics),
+        onPressed: () async {
+          if (!showAnalytics) {
+            // Fetch API data when showing analytics
+            await _fetchApiAnalyticsData();
+          }
+          setState(() => showAnalytics = !showAnalytics);
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF6A1B9A),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(
-          showAnalytics ? 'Hide Analytics' : 'Show Analytics',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: _isLoadingApiData
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Loading Analytics...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                showAnalytics ? 'Hide Analytics' : 'Show Analytics',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -1275,6 +1452,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Show API error message if any
+        if (_apiErrorMessage != null)
+          _buildApiErrorMessage(),
+        
         // Section Header
         Container(
           width: double.infinity,
@@ -1442,13 +1623,45 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              '${_getMockAverageDepth().toStringAsFixed(1)} m',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[600],
-              ),
+            Builder(
+              builder: (context) {
+                final analyticsData = _getAnalyticsData();
+                final avgDepth = analyticsData['averageDepth'] as double? ?? 0.0;
+                final dataSource = analyticsData['dataSource'] as String? ?? 'Mock Data';
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${avgDepth.toStringAsFixed(1)} m',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          dataSource == 'API Data' ? Icons.cloud_done : Icons.sim_card,
+                          size: 12,
+                          color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          dataSource,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 4),
             Text(
@@ -1466,7 +1679,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Min Max Depth Card
   Widget _buildMinMaxDepthCard() {
-    final minMax = _getMockMinMaxDepth();
     return Card(
       elevation: 4,
       color: Theme.of(context).cardColor,
@@ -1500,55 +1712,87 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Min: ${minMax['min']?.toStringAsFixed(1) ?? 'N/A'} m',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green[600],
+            Builder(
+              builder: (context) {
+                final analyticsData = _getAnalyticsData();
+                final minDepth = analyticsData['minDepth'] as double? ?? 0.0;
+                final maxDepth = analyticsData['maxDepth'] as double? ?? 0.0;
+                final dataSource = analyticsData['dataSource'] as String? ?? 'Mock Data';
+                
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Min: ${minDepth.toStringAsFixed(1)} m',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green[600],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Shallowest',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Shallowest',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Max: ${maxDepth.toStringAsFixed(1)} m',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red[600],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Deepest',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Max: ${minMax['max']?.toStringAsFixed(1) ?? 'N/A'} m',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red[600],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          dataSource == 'API Data' ? Icons.cloud_done : Icons.sim_card,
+                          size: 12,
+                          color: dataSource == 'API Data' ? Colors.green : Colors.orange,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Deepest',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
+                        const SizedBox(width: 4),
+                        Text(
+                          dataSource,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: dataSource == 'API Data' ? Colors.green : Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -2297,16 +2541,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   // Mock data methods and helper functions
-  double _getMockAverageDepth() {
-    return 15.2 + (DateTime.now().millisecond % 100) / 10;
-  }
-
-  Map<String, double> _getMockMinMaxDepth() {
-    return {
-      'min': 8.5 + (DateTime.now().millisecond % 50) / 10,
-      'max': 22.1 + (DateTime.now().millisecond % 80) / 10,
-    };
-  }
 
   /// Build Prediction Chart Row
   Widget _buildPredictionChartRow() {
@@ -2568,9 +2802,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     };
   }
 
-  double _getMockYearlyChange() {
-    return -2.3 + (DateTime.now().millisecond % 50) / 10;
-  }
 
   Map<String, dynamic> _getMockDayForecast() {
     final trends = ['RISING', 'STABLE', 'DECLINING'];
