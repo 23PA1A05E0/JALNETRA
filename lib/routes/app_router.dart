@@ -14,6 +14,13 @@ import '../screens/settings_screen.dart';
 import '../screens/location_search_screen.dart';
 import '../screens/debug_screen.dart';
 import '../screens/analytics_screen.dart';
+import '../screens/groundwater_data_screen.dart';
+import '../screens/groundwater_test_screen.dart';
+import '../screens/api_test_screen.dart';
+import '../screens/citizen_features_screen.dart';
+import '../screens/advanced_analytics_screen.dart';
+import '../screens/notification_settings_screen.dart';
+import '../screens/prediction_forecast_screen.dart';
 
 /// App router configuration
 final appRouter = GoRouter(
@@ -103,6 +110,46 @@ final appRouter = GoRouter(
           selectedState: extra?['selectedState'],
         );
       },
+    ),
+    GoRoute(
+      path: '/groundwater-data',
+      name: 'groundwater-data',
+      builder: (context, state) => const GroundwaterDataScreen(),
+    ),
+    GoRoute(
+      path: '/test-groundwater',
+      name: 'test-groundwater',
+      builder: (context, state) => const TestGroundwaterScreen(),
+    ),
+    GoRoute(
+      path: '/groundwater-test',
+      name: 'groundwater-test',
+      builder: (context, state) => const GroundwaterTestScreen(),
+    ),
+    GoRoute(
+      path: '/api-test',
+      name: 'api-test',
+      builder: (context, state) => const ApiTestScreen(),
+    ),
+    GoRoute(
+      path: '/citizen-features',
+      name: 'citizen-features',
+      builder: (context, state) => const CitizenFeaturesScreen(),
+    ),
+    GoRoute(
+      path: '/advanced-analytics',
+      name: 'advanced-analytics',
+      builder: (context, state) => const AdvancedAnalyticsScreen(),
+    ),
+    GoRoute(
+      path: '/notification-settings',
+      name: 'notification-settings',
+      builder: (context, state) => const NotificationSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/prediction-forecast',
+      name: 'prediction-forecast',
+      builder: (context, state) => const PredictionForecastScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

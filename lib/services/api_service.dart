@@ -6,7 +6,7 @@ import '../models/recharge_estimate.dart';
 
 /// API service for communicating with the JALNETRA backend
 class ApiService {
-  static const String _baseUrl = 'https://api.jalnetra.com/v1';
+  static const String _baseUrl = 'http://localhost:8080/api'; // Local Dart backend
   static const String _apiKey = 'your-api-key-here'; // TODO: Move to secure storage
   
   late final Dio _dio;
@@ -39,23 +39,27 @@ class ApiService {
   }
 
   /// Get all monitoring stations
-  /// TODO: Implement actual API call
   Future<List<Station>> getStations() async {
     try {
-      _logger.i('Fetching stations...');
+      _logger.i('Fetching stations from Dart backend...');
       
-      // TODO: Replace with actual API call
-      // final response = await _dio.get('/stations');
-      // return (response.data as List)
-      //     .map((json) => Station.fromJson(json))
-      //     .toList();
+      final response = await _dio.get('/stations');
       
-      // Mock data for development
-      await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true && data['data'] != null) {
+          final stationsList = data['data'] as List;
+          return stationsList.map((json) => Station.fromJson(json)).toList();
+        }
+      }
+      
+      // Fallback to mock data if API fails
+      _logger.w('API call failed, using mock data');
       return _getMockStations();
     } catch (e) {
       _logger.e('Error fetching stations: $e');
-      rethrow;
+      _logger.i('Falling back to mock data');
+      return _getMockStations();
     }
   }
 

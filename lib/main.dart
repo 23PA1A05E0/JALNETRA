@@ -13,7 +13,7 @@ void main() async {
     ),
   );
 }
-
+// 
 /// Main application widget
 class JALNETRAApp extends ConsumerWidget {
   @override

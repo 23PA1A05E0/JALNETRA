@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/manual_data_provider.dart';
-import '../providers/water_well_depth_provider.dart';
 
 class DebugScreen extends ConsumerStatefulWidget {
   const DebugScreen({super.key});
@@ -137,17 +136,6 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
                 onPressed: () => _testDataStorage(),
                 icon: const Icon(Icons.storage),
                 label: const Text('Test Data Storage'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            // Test Water Well Depth Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _testWaterWellDepth(),
-                icon: const Icon(Icons.water_drop),
-                label: const Text('Test Water Well Depth'),
               ),
             ),
             const SizedBox(height: 8),
@@ -459,42 +447,6 @@ class _DebugScreenState extends ConsumerState<DebugScreen> {
     }
   }
 
-  Future<void> _testWaterWellDepth() async {
-    try {
-      final service = ref.read(waterWellDepthServiceProvider);
-      
-      // Generate mock data
-      final historicalData = service.generateMockHistoricalData(days: 30);
-      final predictions = service.generateMockPredictions(days: 7);
-      final trendAnalysis = service.getTrendAnalysis(days: 30);
-      final modelPerformance = service.getModelPerformance();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ Water Well Depth Test Successful!\n'
-              'Historical: ${historicalData.length} points\n'
-              'Predictions: ${predictions.length} points\n'
-              'Trend: ${trendAnalysis['trendDirection']}\n'
-              'ML Accuracy: ${(modelPerformance['accuracy'] * 100).toStringAsFixed(0)}%'
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Water Well Depth test failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _showLogs() {
     showDialog(

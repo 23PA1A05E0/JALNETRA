@@ -3,8 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
 import '../providers/manual_data_provider.dart';
+import '../providers/groundwater_data_provider.dart';
+import '../providers/prediction_forecast_provider.dart';
+import 'package:logger/logger.dart';
+
+final logger = Logger();
+
+/// Data point class for chart
+class ChartDataPoint {
+  final String x;
+  final double y;
+  
+  ChartDataPoint(this.x, this.y);
+}
 
 /// Citizen Dashboard - Dark theme with location detection and analytics
 class CitizenDashboard extends ConsumerStatefulWidget {
@@ -22,6 +36,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   bool isDetectingLocation = false;
   bool locationPermissionGranted = false;
   Position? _currentPosition;
+  String _selectedPredictionPeriod = '1week';
   Placemark? _currentPlacemark;
 
   // All Indian states and union territories (canonical display names)
@@ -1026,21 +1041,10 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         
         const SizedBox(height: 16),
         
-        // Yearly Change and Well Depth Row
+        // Yearly Change Row
         Row(
           children: [
             Expanded(child: _buildYearlyChangeCard()),
-            const SizedBox(width: 12),
-            Expanded(child: _buildWellDepthCard()),
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Forecasts Row
-        Row(
-          children: [
-            Expanded(child: _buildMonthlyForecastCard()),
             const SizedBox(width: 12),
             Expanded(child: _buildDayForecastCard()),
           ],
@@ -1048,8 +1052,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         
         const SizedBox(height: 16),
         
-        // Alerts and Notifications
-        _buildAlertsNotificationsCard(),
+        // Prediction Chart Row
+        _buildPredictionChartRow(),
       ],
     );
   }
@@ -1511,82 +1515,6 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     );
   }
 
-  /// Build Well Depth Card
-  Widget _buildWellDepthCard() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final stationData = ref.watch(stationDataProvider);
-        
-        return Card(
-          elevation: 4,
-          color: Theme.of(context).cardColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.water_drop, color: Colors.teal[600], size: 20),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Well Depth',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.teal[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                stationData.when(
-                  data: (data) {
-                    final wellDepth = _getWellDepthFromAPI(data);
-                    return Text(
-                      '${wellDepth.toStringAsFixed(1)} m',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal[600],
-                      ),
-                    );
-                  },
-                  loading: () => const CircularProgressIndicator(),
-                  error: (error, stack) => Text(
-                    'N/A',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Total depth',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
   
   /// Build Monthly Forecast Card
   Widget _buildMonthlyForecastCard() {
@@ -1989,20 +1917,266 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     return currentLevel - previousLevel;
   }
 
-  double _getWellDepthFromAPI(Map<String, dynamic>? data) {
-    if (data == null) return 0.0;
+
+  /// Build Prediction Chart Row
+  Widget _buildPredictionChartRow() {
+    return Consumer(
+      builder: (context, ref, child) {
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with Prediction Options
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.show_chart, color: Colors.purple[600], size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Prediction Chart',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.purple[700],
+                        ),
+                      ),
+                    ),
+                    // Prediction Period Selector
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedPredictionPeriod,
+                          items: const [
+                            DropdownMenuItem(value: '1week', child: Text('1 Week')),
+                            DropdownMenuItem(value: '1month', child: Text('1 Month')),
+                          ],
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedPredictionPeriod = newValue ?? '1week';
+                            });
+                          },
+                          style: TextStyle(
+                            color: Colors.purple[700],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Chart Container
+                SizedBox(
+                  height: 300,
+                  child: _buildPredictionChart(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build Prediction Chart
+  Widget _buildPredictionChart() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final availableLocations = ref.watch(availableLocationsProvider);
+        
+        if (availableLocations.isEmpty) {
+          return const Center(
+            child: Text('No locations available'),
+          );
+        }
+        
+        // Use first available location as default
+        final selectedLocation = availableLocations.first;
+        final groundwaterData = ref.watch(groundwaterDataProvider(selectedLocation));
+        final predictionData = ref.watch(predictionDataProvider(selectedLocation));
+        final forecastData = ref.watch(forecastDataProvider(selectedLocation));
+        
+        return groundwaterData.when(
+          data: (data) {
+            if (data == null) {
+              return const Center(child: Text('No data available'));
+            }
+            
+            // Generate chart data based on selected period
+            final chartData = _generatePredictionChartData(
+              data,
+              predictionData.value,
+              forecastData.value,
+              _selectedPredictionPeriod,
+            );
+            
+            return charts.SfCartesianChart(
+              primaryXAxis: const charts.CategoryAxis(
+                title: charts.AxisTitle(text: 'Time Period'),
+                labelRotation: -45,
+              ),
+              primaryYAxis: const charts.NumericAxis(
+                title: charts.AxisTitle(text: 'Depth (meters)'),
+                isInversed: true,
+              ),
+              title: charts.ChartTitle(
+                text: 'Groundwater Prediction - ${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'}',
+                textStyle: Theme.of(context).textTheme.titleSmall,
+              ),
+              legend: const charts.Legend(
+                isVisible: true,
+                position: charts.LegendPosition.bottom,
+              ),
+              tooltipBehavior: charts.TooltipBehavior(
+                enable: true,
+                format: 'point.x: point.y m',
+              ),
+              series: <charts.CartesianSeries<ChartDataPoint, String>>[
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['historical'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Historical',
+                  color: Colors.blue,
+                  width: 2,
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['prediction'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Prediction',
+                  color: Colors.green,
+                  width: 2,
+                  dashArray: const [5, 5],
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['forecast'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Forecast',
+                  color: Colors.orange,
+                  width: 2,
+                  dashArray: const [10, 5],
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text('Error: $error')),
+        );
+      },
+    );
+  }
+
+  /// Generate prediction chart data based on selected period
+  Map<String, List<ChartDataPoint>> _generatePredictionChartData(
+    Map<String, dynamic> groundwaterData,
+    Map<String, dynamic>? predictionData,
+    Map<String, dynamic>? forecastData,
+    String period,
+  ) {
+    final chartData = <String, List<ChartDataPoint>>{};
+    final now = DateTime.now();
     
-    return data['wellDepth'] as double? ?? 0.0;
+    // Historical data (last 30 days)
+    final historicalData = <ChartDataPoint>[];
+    final averageDepth = groundwaterData['averageDepth'] as double? ?? -8.0;
+    final minDepth = groundwaterData['minDepth'] as double? ?? -12.0;
+    final maxDepth = groundwaterData['maxDepth'] as double? ?? -4.0;
+    
+    for (int i = 30; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final variation = (i % 7) * 0.2 - 0.6;
+      final randomVariation = (date.day % 5) * 0.1 - 0.2;
+      final depth = averageDepth + variation + randomVariation;
+      
+      historicalData.add(ChartDataPoint(
+        date.toIso8601String().split('T')[0],
+        depth.clamp(minDepth, maxDepth),
+      ));
+    }
+    chartData['historical'] = historicalData;
+    
+    // Prediction data based on selected period
+    final predictionDataPoints = <ChartDataPoint>[];
+    final days = period == '1week' ? 7 : 30;
+    final predictedDepth = predictionData?['predictedDepth'] as double? ?? averageDepth;
+    final confidence = predictionData?['confidence'] as double? ?? 0.85;
+    
+    for (int i = 1; i <= days; i++) {
+      final date = now.add(Duration(days: i));
+      final variation = (i * 0.1) * (1 - confidence);
+      final depth = predictedDepth + variation;
+      
+      predictionDataPoints.add(ChartDataPoint(
+        date.toIso8601String().split('T')[0],
+        depth,
+      ));
+    }
+    chartData['prediction'] = predictionDataPoints;
+    
+    // Forecast data
+    final forecastDataPoints = <ChartDataPoint>[];
+    final forecastDataList = forecastData?['forecastData'] as List<Map<String, dynamic>>? ?? [];
+    
+    if (forecastDataList.isNotEmpty) {
+      final limit = period == '1week' ? 7 : 15;
+      for (final forecastPoint in forecastDataList.take(limit)) {
+        final date = forecastPoint['date'] as String? ?? '';
+        final depth = forecastPoint['predictedDepth'] as double? ?? -8.0;
+        
+        forecastDataPoints.add(ChartDataPoint(date, depth));
+      }
+    }
+    chartData['forecast'] = forecastDataPoints;
+    
+    return chartData;
+  }
+
+
+  double _getDayForecast() {
+    // Mock day forecast
+    return 15.5 + (DateTime.now().millisecond % 8) / 10;
   }
 
   double _getMonthlyForecast() {
     // Mock monthly forecast
     return 16.8 + (DateTime.now().millisecond % 15) / 10;
-  }
-
-  double _getDayForecast() {
-    // Mock day forecast
-    return 15.5 + (DateTime.now().millisecond % 8) / 10;
   }
 
   String _getForecastTrend() {

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/manual_data_provider.dart';
-import '../providers/water_well_depth_provider.dart';
 import '../widgets/water_level_chart_painter.dart';
-import '../widgets/water_well_depth_chart.dart';
 
 /// Analytics screen for detailed groundwater data analysis
 class AnalyticsScreen extends ConsumerStatefulWidget {
@@ -83,7 +81,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             if (isTadepalligudem) ...[
               _buildRealDataAnalytics(),
               const SizedBox(height: 20),
-              _buildWaterWellDepthSection(),
             ] else ...[
               _buildMockAnalytics(),
             ],
@@ -503,7 +500,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             Row(
               children: [
                 Expanded(
-                  child: _buildStatCard('Well Depth', '${data['wellDepth']?.toStringAsFixed(1) ?? 'N/A'} m', Colors.green),
+                  child: _buildStatCard('Aquifer Type', data['aquiferType'] ?? 'N/A', Colors.green),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -802,10 +799,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                WaterWellDepthChart(
-                  historicalDays: _getDaysFromTimeRange(_selectedTimeRange),
-                  predictionDays: 7,
-                  chartType: _selectedChartType,
+                const Center(
+                  child: Text('Chart visualization would be implemented here'),
                 ),
               ],
             ),
@@ -813,142 +808,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 16),
         
-        // ML Model Performance
-        const MLModelPerformanceWidget(),
-        const SizedBox(height: 16),
-        
         // Data Summary Cards
-        _buildWellDepthSummaryCards(),
+        const Center(
+          child: Text('Summary cards would be implemented here'),
+        ),
       ],
-    );
-  }
-  
-  Widget _buildWellDepthSummaryCards() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final trend7Days = ref.watch(wellDepthTrendProvider(7));
-        final trend30Days = ref.watch(wellDepthTrendProvider(30));
-        
-        return Row(
-          children: [
-            Expanded(
-              child: Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.trending_up,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '7-Day Trend',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      trend7Days.when(
-                        data: (trend) => Text(
-                          '${trend['change']}m',
-                          style: TextStyle(
-                            color: trend['change'] > 0 ? Colors.red : Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        loading: () => const Text('...'),
-                        error: (error, stack) => const Text('Error'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.trending_up,
-                        color: Colors.orange,
-                        size: 24,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '30-Day Trend',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      trend30Days.when(
-                        data: (trend) => Text(
-                          '${trend['change']}m',
-                          style: TextStyle(
-                            color: trend['change'] > 0 ? Colors.red : Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        loading: () => const Text('...'),
-                        error: (error, stack) => const Text('Error'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.psychology,
-                        color: Colors.purple,
-                        size: 24,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'ML Accuracy',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Consumer(
-                        builder: (context, ref, child) {
-                          final performance = ref.watch(mlModelPerformanceProvider);
-                          return performance.when(
-                            data: (perf) => Text(
-                              '${(perf['accuracy'] * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                color: Colors.purple,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            loading: () => const Text('...'),
-                            error: (error, stack) => const Text('Error'),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
   

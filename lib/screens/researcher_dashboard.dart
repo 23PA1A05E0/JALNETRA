@@ -3,7 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
+import '../providers/groundwater_data_provider.dart';
+import '../providers/prediction_forecast_provider.dart';
+import 'package:logger/logger.dart';
+
+final logger = Logger();
+
+/// Data point class for chart
+class ChartDataPoint {
+  final String x;
+  final double y;
+  
+  ChartDataPoint(this.x, this.y);
+}
 
 /// Researcher Dashboard with two main options
 class ResearcherDashboard extends ConsumerStatefulWidget {
@@ -21,6 +35,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   bool showAnalytics = false;
   Position? _currentPosition;
   Placemark? _currentPlacemark;
+  String _selectedPredictionPeriod = '1week';
 
   // All Indian states and union territories
   final List<String> indianStates = const [
@@ -216,9 +231,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF6A1B9A),
-            const Color(0xFF8E24AA),
-            const Color(0xFFAB47BC),
+            const Color(0xFF6A1B9A).withOpacity(0.7),
+            const Color(0xFF8E24AA).withOpacity(0.6),
+            const Color(0xFFAB47BC).withOpacity(0.5),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -227,7 +242,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6A1B9A).withOpacity(0.3),
+            color: const Color(0xFF6A1B9A).withOpacity(0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
             ),
@@ -241,11 +256,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -390,7 +405,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isSelected ? const Color(0xFF6A1B9A) : Colors.transparent,
+          color: isSelected ? const Color(0xFF6A1B9A).withOpacity(0.6) : Colors.transparent,
           width: 2,
         ),
       ),
@@ -404,8 +419,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             gradient: LinearGradient(
               colors: isSelected 
                 ? [
-                    const Color(0xFF6A1B9A).withOpacity(0.05),
-                    const Color(0xFF6A1B9A).withOpacity(0.02),
+                    const Color(0xFF6A1B9A).withOpacity(0.03),
+                    const Color(0xFF6A1B9A).withOpacity(0.01),
                   ]
                 : [
                     Colors.white,
@@ -493,30 +508,30 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF6A1B9A).withOpacity(0.1),
             const Color(0xFF6A1B9A).withOpacity(0.05),
+            const Color(0xFF6A1B9A).withOpacity(0.02),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF6A1B9A).withOpacity(0.3),
+          color: const Color(0xFF6A1B9A).withOpacity(0.15),
           width: 1.5,
         ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF6A1B9A).withOpacity(0.2),
                         const Color(0xFF6A1B9A).withOpacity(0.1),
+                        const Color(0xFF6A1B9A).withOpacity(0.05),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -528,44 +543,222 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   ),
                 ),
                 const SizedBox(width: 16),
-            Expanded(
-              child: Text(
+                Expanded(
+                  child: Text(
                     'Data Download Center',
                     style: TextStyle(
                       fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                       color: const Color(0xFF6A1B9A),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
             const SizedBox(height: 24),
             
-            // Download options
-            _buildDownloadOption(
-              title: 'Station Data',
-              description: 'Download groundwater station data',
-              icon: Icons.location_on,
-              onTap: () => _showDownloadDialog('Station Data'),
+            // Location Selection
+            _buildLocationSelection(),
+            const SizedBox(height: 24),
+            
+            // Show analytics for selected location
+            if (selectedCity != null) ...[
+              // Download button for selected location
+              _buildDownloadButton(),
+            ] else ...[
+              // Show message when no location is selected
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.location_off,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Please select a location to download Excel data',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build location selection for data download
+  Widget _buildLocationSelection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Location for Data Download',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF6A1B9A),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // State dropdown
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'State',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                prefixIcon: const Icon(Icons.location_city),
+              ),
+              value: selectedState,
+              isExpanded: true,
+              items: indianStates.map((String state) {
+                return DropdownMenuItem<String>(
+                  value: state,
+                  child: Text(
+                    state,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  selectedState = newValue;
+                  selectedDistrict = null;
+                  selectedCity = null;
+                });
+              },
+            ),
+            
+            if (selectedState != null) ...[
+              const SizedBox(height: 16),
+              
+              // District dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'District',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.location_on),
+                ),
+                value: selectedDistrict,
+                isExpanded: true,
+                items: (stateDistrictsBase[selectedState!] ?? []).map((String district) {
+                  return DropdownMenuItem<String>(
+                    value: district,
+                    child: Text(
+                      district,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedDistrict = newValue;
+                    selectedCity = null;
+                  });
+                },
+              ),
+            ],
+            
+            if (selectedDistrict != null) ...[
+              const SizedBox(height: 16),
+              
+              // City dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'City',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  prefixIcon: const Icon(Icons.home),
+                ),
+                value: selectedCity,
+                isExpanded: true,
+                items: _getCitiesForDistrict(selectedDistrict!).map((String city) {
+                  return DropdownMenuItem<String>(
+                    value: city,
+                    child: Text(
+                      city,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedCity = newValue;
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build analytics for selected location
+  Widget _buildLocationAnalytics() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.analytics,
+                  color: const Color(0xFF6A1B9A),
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Analytics for $selectedCity',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF6A1B9A),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Analytics cards (same as information content)
+            Row(
+              children: [
+                Expanded(child: _buildAverageDepthCard()),
+                const SizedBox(width: 12),
+                Expanded(child: _buildMinMaxDepthCard()),
+              ],
             ),
             
             const SizedBox(height: 16),
             
-            _buildDownloadOption(
-              title: 'Historical Data',
-              description: 'Download historical water level data',
-              icon: Icons.history,
-              onTap: () => _showDownloadDialog('Historical Data'),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            _buildDownloadOption(
-              title: 'Analytics Data',
-              description: 'Download processed analytics and insights',
-              icon: Icons.analytics,
-              onTap: () => _showDownloadDialog('Analytics Data'),
+            Row(
+              children: [
+                Expanded(child: _buildYearlyChangeCard()),
+                const SizedBox(width: 12),
+                Expanded(child: _buildDayForecastCard()),
+              ],
             ),
           ],
         ),
@@ -573,68 +766,139 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     );
   }
 
-  /// Build download option card
-  Widget _buildDownloadOption({
-    required String title,
-    required String description,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  /// Build download button for selected location
+  Widget _buildDownloadButton() {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-      children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6A1B9A).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: const Color(0xFF6A1B9A),
-                  size: 20,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF6A1B9A).withOpacity(0.7),
+              const Color(0xFF8E24AA).withOpacity(0.6),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.download,
+              color: Colors.white,
+              size: 32,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Download Excel Data for $selectedCity',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Download comprehensive groundwater data in Excel format including historical records, predictions, and analytics',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            
+            // Download format options - Only Excel
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => _downloadData('Excel'),
+                icon: const Icon(Icons.description, color: Colors.white),
+                label: const Text('Download Excel', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
               ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                    const SizedBox(height: 4),
-                          Text(
-                      description,
-                style: TextStyle(
-                        fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: Color(0xFF6A1B9A),
-                size: 16,
-                    ),
-                  ],
-                ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Download data for selected location
+  void _downloadData(String format) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Download $format Data'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.download,
+              size: 48,
+              color: const Color(0xFF6A1B9A),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Downloading groundwater data for $selectedCity in $format format...',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const CircularProgressIndicator(),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    
+    // Simulate download process
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pop(context); // Close loading dialog
+      
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Download Complete'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle,
+                size: 48,
+                color: Colors.green,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Data for $selectedCity has been downloaded successfully in $format format!',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Get cities for a district
+  List<String> _getCitiesForDistrict(String district) {
+    return districtCities[district] ?? [];
   }
 
   /// Show download dialog
@@ -1057,21 +1321,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         
         const SizedBox(height: 16),
         
-        // Yearly Change and Well Depth Row
+        // Yearly Change Row
         Row(
           children: [
             Expanded(child: _buildYearlyChangeCard()),
-            const SizedBox(width: 12),
-            Expanded(child: _buildWellDepthCard()),
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Forecasts Row
-        Row(
-          children: [
-            Expanded(child: _buildMonthlyForecastCard()),
             const SizedBox(width: 12),
             Expanded(child: _buildDayForecastCard()),
           ],
@@ -1079,8 +1332,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         
         const SizedBox(height: 16),
         
-        // Alerts and Notifications
-        _buildAlertsNotificationsCard(),
+        // Prediction Chart Row
+        _buildPredictionChartRow(),
       ],
     );
   }
@@ -1795,62 +2048,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     );
   }
 
-  /// Build Well Depth Card
-  Widget _buildWellDepthCard() {
-    return Card(
-      elevation: 4,
-      color: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.water_drop, color: Colors.teal[600], size: 20),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Well Depth',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.teal[700],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${_getMockWellDepth().toStringAsFixed(1)} m',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.teal[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Recommended depth',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// Build Monthly Forecast Card
   Widget _buildMonthlyForecastCard() {
@@ -2111,13 +2308,257 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     };
   }
 
-  double _getMockYearlyChange() {
-    return -2.3 + (DateTime.now().millisecond % 50) / 10;
+  /// Build Prediction Chart Row
+  Widget _buildPredictionChartRow() {
+    return Consumer(
+      builder: (context, ref, child) {
+        return Card(
+          elevation: 4,
+          color: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with Prediction Options
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.show_chart, color: Colors.purple[600], size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Prediction Chart',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.purple[700],
+                        ),
+                      ),
+                    ),
+                    // Prediction Period Selector
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedPredictionPeriod,
+                          items: const [
+                            DropdownMenuItem(value: '1week', child: Text('1 Week')),
+                            DropdownMenuItem(value: '1month', child: Text('1 Month')),
+                          ],
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedPredictionPeriod = newValue ?? '1week';
+                            });
+                          },
+                          style: TextStyle(
+                            color: Colors.purple[700],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Chart Container
+                SizedBox(
+                  height: 300,
+                  child: _buildPredictionChart(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  double _getMockWellDepth() {
-    return 18.7 + (DateTime.now().millisecond % 60) / 10;
+  /// Build Prediction Chart
+  Widget _buildPredictionChart() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final availableLocations = ref.watch(availableLocationsProvider);
+        
+        if (availableLocations.isEmpty) {
+          return const Center(
+            child: Text('No locations available'),
+          );
+        }
+        
+        // Use first available location as default
+        final selectedLocation = availableLocations.first;
+        final groundwaterData = ref.watch(groundwaterDataProvider(selectedLocation));
+        final predictionData = ref.watch(predictionDataProvider(selectedLocation));
+        final forecastData = ref.watch(forecastDataProvider(selectedLocation));
+        
+        return groundwaterData.when(
+          data: (data) {
+            if (data == null) {
+              return const Center(child: Text('No data available'));
+            }
+            
+            // Generate chart data based on selected period
+            final chartData = _generatePredictionChartData(
+              data,
+              predictionData.value,
+              forecastData.value,
+              _selectedPredictionPeriod,
+            );
+            
+            return charts.SfCartesianChart(
+              primaryXAxis: const charts.CategoryAxis(
+                title: charts.AxisTitle(text: 'Time Period'),
+                labelRotation: -45,
+              ),
+              primaryYAxis: const charts.NumericAxis(
+                title: charts.AxisTitle(text: 'Depth (meters)'),
+                isInversed: true,
+              ),
+              title: charts.ChartTitle(
+                text: 'Groundwater Prediction - ${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'}',
+                textStyle: Theme.of(context).textTheme.titleSmall,
+              ),
+              legend: const charts.Legend(
+                isVisible: true,
+                position: charts.LegendPosition.bottom,
+              ),
+              tooltipBehavior: charts.TooltipBehavior(
+                enable: true,
+                format: 'point.x: point.y m',
+              ),
+              series: <charts.CartesianSeries<ChartDataPoint, String>>[
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['historical'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Historical',
+                  color: Colors.blue,
+                  width: 2,
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['prediction'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Prediction',
+                  color: Colors.green,
+                  width: 2,
+                  dashArray: const [5, 5],
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+                charts.LineSeries<ChartDataPoint, String>(
+                  dataSource: chartData['forecast'] ?? [],
+                  xValueMapper: (ChartDataPoint data, _) => data.x,
+                  yValueMapper: (ChartDataPoint data, _) => data.y,
+                  name: 'Forecast',
+                  color: Colors.orange,
+                  width: 2,
+                  dashArray: const [10, 5],
+                  markerSettings: const charts.MarkerSettings(
+                    isVisible: true,
+                    height: 4,
+                    width: 4,
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text('Error: $error')),
+        );
+      },
+    );
   }
+
+  /// Generate prediction chart data based on selected period
+  Map<String, List<ChartDataPoint>> _generatePredictionChartData(
+    Map<String, dynamic> groundwaterData,
+    Map<String, dynamic>? predictionData,
+    Map<String, dynamic>? forecastData,
+    String period,
+  ) {
+    final chartData = <String, List<ChartDataPoint>>{};
+    final now = DateTime.now();
+    
+    // Historical data (last 30 days)
+    final historicalData = <ChartDataPoint>[];
+    final averageDepth = groundwaterData['averageDepth'] as double? ?? -8.0;
+    final minDepth = groundwaterData['minDepth'] as double? ?? -12.0;
+    final maxDepth = groundwaterData['maxDepth'] as double? ?? -4.0;
+    
+    for (int i = 30; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final variation = (i % 7) * 0.2 - 0.6;
+      final randomVariation = (date.day % 5) * 0.1 - 0.2;
+      final depth = averageDepth + variation + randomVariation;
+      
+      historicalData.add(ChartDataPoint(
+        date.toIso8601String().split('T')[0],
+        depth.clamp(minDepth, maxDepth),
+      ));
+    }
+    chartData['historical'] = historicalData;
+    
+    // Prediction data based on selected period
+    final predictionDataPoints = <ChartDataPoint>[];
+    final days = period == '1week' ? 7 : 30;
+    final predictedDepth = predictionData?['predictedDepth'] as double? ?? averageDepth;
+    final confidence = predictionData?['confidence'] as double? ?? 0.85;
+    
+    for (int i = 1; i <= days; i++) {
+      final date = now.add(Duration(days: i));
+      final variation = (i * 0.1) * (1 - confidence);
+      final depth = predictedDepth + variation;
+      
+      predictionDataPoints.add(ChartDataPoint(
+        date.toIso8601String().split('T')[0],
+        depth,
+      ));
+    }
+    chartData['prediction'] = predictionDataPoints;
+    
+    // Forecast data
+    final forecastDataPoints = <ChartDataPoint>[];
+    final forecastDataList = forecastData?['forecastData'] as List<Map<String, dynamic>>? ?? [];
+    
+    if (forecastDataList.isNotEmpty) {
+      final limit = period == '1week' ? 7 : 15;
+      for (final forecastPoint in forecastDataList.take(limit)) {
+        final date = forecastPoint['date'] as String? ?? '';
+        final depth = forecastPoint['predictedDepth'] as double? ?? -8.0;
+        
+        forecastDataPoints.add(ChartDataPoint(date, depth));
+      }
+    }
+    chartData['forecast'] = forecastDataPoints;
+    
+    return chartData;
+  }
+
+
 
   Map<String, dynamic> _getMockMonthlyForecast() {
     final trends = ['RISING', 'STABLE', 'DECLINING'];
@@ -2125,6 +2566,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       'level': 16.8 + (DateTime.now().millisecond % 40) / 10,
       'trend': trends[DateTime.now().millisecond % 3],
     };
+  }
+
+  double _getMockYearlyChange() {
+    return -2.3 + (DateTime.now().millisecond % 50) / 10;
   }
 
   Map<String, dynamic> _getMockDayForecast() {

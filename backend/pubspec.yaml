@@ -1,0 +1,22 @@
+name: jalnetra_backend
+description: Dart Backend Server for JalNetra Groundwater Monitoring App
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
+  shelf_cors_headers: ^0.1.5
+  shelf_logger: ^1.0.0
+  logger: ^2.0.2
+  dio: ^5.4.0
+  http: ^1.1.2
+
+dev_dependencies:
+  test: ^1.24.6
+  lints: ^3.0.0
+
+executables:
+  jalnetra_backend:

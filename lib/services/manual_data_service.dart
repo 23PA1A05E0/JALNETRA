@@ -214,7 +214,6 @@ class ManualDataService {
         'waterLevelUnit': 'm',
         'lastUpdated': '2025-01-16',
         'dataPoints': 0,
-        'wellDepth': 200.76,
         'aquiferType': 'Alluvial',
         'wellType': 'Bore Well',
         'dataSource': 'Manual Entry',

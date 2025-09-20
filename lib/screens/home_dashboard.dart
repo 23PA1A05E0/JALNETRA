@@ -51,6 +51,41 @@ class _HomeDashboardState extends ConsumerState<HomeDashboard> {
           : null,
         actions: [
           IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => context.go('/citizen-features'),
+            tooltip: 'Citizen Features',
+          ),
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            onPressed: () => context.go('/advanced-analytics'),
+            tooltip: 'Advanced Analytics',
+          ),
+          IconButton(
+            icon: const Icon(Icons.trending_up),
+            onPressed: () => context.go('/prediction-forecast'),
+            tooltip: 'Predictions & Forecasts',
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_active),
+            onPressed: () => context.go('/notification-settings'),
+            tooltip: 'Notification Settings',
+          ),
+          IconButton(
+            icon: const Icon(Icons.water_drop),
+            onPressed: () => context.go('/groundwater-data'),
+            tooltip: 'Groundwater Data',
+          ),
+          IconButton(
+            icon: const Icon(Icons.api),
+            onPressed: () => context.go('/api-test'),
+            tooltip: 'Test API Connection',
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () => context.go('/groundwater-test'),
+            tooltip: 'Test Groundwater API',
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => context.go('/stations'),
             tooltip: 'Search Stations',
