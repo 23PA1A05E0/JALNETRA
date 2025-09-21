@@ -1,24 +1,52 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/groundwater_data_service.dart';
+import '../services/api_service.dart';
 
 /// Provider for GroundwaterDataService
 final groundwaterDataServiceProvider = Provider<GroundwaterDataService>((ref) {
   return GroundwaterDataService();
 });
 
-/// Provider for available locations (for dropdown)
+/// Provider for ApiService
+final apiServiceProvider = Provider<ApiService>((ref) {
+  return ApiService();
+});
+
+/// Provider for available locations (for dropdown) - returns simple list
 final availableLocationsProvider = Provider<List<String>>((ref) {
-  final service = ref.read(groundwaterDataServiceProvider);
-  return service.getAvailableLocations();
+  return [
+    'Addanki',
+    'Akkireddipalem', 
+    'Anantapur',
+    'Bapulapadu',
+    'Chittoor',
+    'Gudur',
+    'Kakinada',
+    'Sultan nagaram',
+    'Tadepalligudem',
+    'Tenali',
+  ];
 });
 
 /// Provider for selected location
 final selectedLocationProvider = StateProvider<String?>((ref) => null);
 
-/// Provider for groundwater data of selected location
+/// Provider for groundwater data of selected location - now uses real API data
 final groundwaterDataProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, location) async {
-  final service = ref.read(groundwaterDataServiceProvider);
-  return await service.getGroundwaterDataForLocation(location);
+  final apiService = ref.read(apiServiceProvider);
+  return await apiService.getFeaturesForLocation(location);
+});
+
+/// Provider for forecast data - uses real API
+final forecastDataProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, location) async {
+  final apiService = ref.read(apiServiceProvider);
+  return await apiService.getForecastForLocation(location, 7); // Default to 7 days
+});
+
+/// Provider for 30-day forecast data - uses real API
+final forecast30DaysProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, location) async {
+  final apiService = ref.read(apiServiceProvider);
+  return await apiService.getForecastForLocation(location, 30);
 });
 
 /// Provider for all locations data

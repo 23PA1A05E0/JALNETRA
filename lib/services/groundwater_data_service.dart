@@ -249,7 +249,7 @@ class GroundwaterDataService {
       final date = DateTime(now.year, now.month - i, 1);
       monthlyData.add({
         'month': '${date.year}-${date.month.toString().padLeft(2, '0')}',
-        'depth': -8.0 + (i * 0.2), // Mock trend data
+        'depth': -5.0 + (i * 0.1), // More realistic trend data
         'stationCode': stationCode,
         'locationName': selectedLocation,
       });
@@ -270,7 +270,7 @@ class GroundwaterDataService {
       final date = now.subtract(Duration(days: i));
       dailyData.add({
         'date': date.toIso8601String().split('T')[0],
-        'depth': -8.0 + (i * 0.05), // Mock daily data
+        'depth': -5.0 + (i * 0.02), // More realistic daily data
         'stationCode': stationCode,
         'locationName': selectedLocation,
       });
@@ -392,7 +392,16 @@ class GroundwaterDataService {
       _logger.i('🔮 Fetching prediction data for location: $selectedLocation');
       _logger.i('📍 Station code: $stationCode');
 
-      final response = await _dio.get(_predictUrl);
+      // Use POST method with correct endpoint
+      final requestBody = {
+        'station_code': stationCode,
+        'horizon': 30,
+      };
+
+      final response = await _dio.post(
+        _forecastUrl, // Use forecast endpoint instead of predict
+        data: requestBody,
+      );
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -429,7 +438,16 @@ class GroundwaterDataService {
       _logger.i('📊 Fetching forecast data for location: $selectedLocation');
       _logger.i('📍 Station code: $stationCode');
 
-      final response = await _dio.get(_forecastUrl);
+      // Use POST method with correct endpoint
+      final requestBody = {
+        'station_code': stationCode,
+        'horizon': 30,
+      };
+
+      final response = await _dio.post(
+        _forecastUrl,
+        data: requestBody,
+      );
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -457,16 +475,24 @@ class GroundwaterDataService {
   /// Extract prediction data for a specific station from API response
   Map<String, dynamic>? _extractPredictionData(Map<String, dynamic> data, String stationCode) {
     try {
-      // This would parse the actual prediction API response
-      // For now, return structured data based on the station code
-      return {
-        'stationCode': stationCode,
-        'predictedDepth': -8.5, // Mock prediction
-        'confidence': 0.85,
-        'predictionDate': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-        'modelVersion': 'v1.0',
-        'accuracy': 0.92,
-      };
+      // Parse the actual forecast API response
+      if (data['status'] == 'success' && data['forecast'] != null) {
+        final forecastList = data['forecast'] as List<dynamic>;
+        if (forecastList.isNotEmpty) {
+          // Use the last forecast point as prediction
+          final lastForecast = forecastList.last;
+          return {
+            'stationCode': stationCode,
+            'predictedDepth': lastForecast['forecast'] as double,
+            'confidence': 0.85,
+            'predictionDate': lastForecast['date'] as String,
+            'modelVersion': 'v1.0',
+            'accuracy': 0.92,
+            'dataSource': 'API Data',
+          };
+        }
+      }
+      return null;
     } catch (e) {
       _logger.e('❌ Error extracting prediction data: $e');
       return null;
@@ -476,16 +502,29 @@ class GroundwaterDataService {
   /// Extract forecast data for a specific station from API response
   Map<String, dynamic>? _extractForecastData(Map<String, dynamic> data, String stationCode) {
     try {
-      // This would parse the actual forecast API response
-      // For now, return structured data based on the station code
-      return {
-        'stationCode': stationCode,
-        'forecastPeriod': '30 days',
-        'forecastData': _generateMockForecastData(),
-        'forecastDate': DateTime.now().toIso8601String(),
-        'modelVersion': 'v1.0',
-        'reliability': 0.88,
-      };
+      // Parse the actual forecast API response
+      if (data['status'] == 'success' && data['forecast'] != null) {
+        final forecastList = data['forecast'] as List<dynamic>;
+        if (forecastList.isNotEmpty) {
+          // Convert API forecast data to our format
+          final forecastData = forecastList.map((item) => {
+            'date': item['date'] as String,
+            'forecast': item['forecast'] as double,
+            'stationCode': stationCode,
+          }).toList();
+          
+          return {
+            'stationCode': stationCode,
+            'forecastPeriod': '${forecastList.length} days',
+            'forecastData': forecastData,
+            'forecastDate': DateTime.now().toIso8601String(),
+            'modelVersion': 'v1.0',
+            'reliability': 0.88,
+            'dataSource': 'API Data',
+          };
+        }
+      }
+      return null;
     } catch (e) {
       _logger.e('❌ Error extracting forecast data: $e');
       return null;
@@ -501,7 +540,7 @@ class GroundwaterDataService {
       final date = now.add(Duration(days: i));
       forecastData.add({
         'date': date.toIso8601String().split('T')[0],
-        'predictedDepth': -8.0 - (i * 0.1),
+        'predictedDepth': -5.0 - (i * 0.05), // More realistic range
         'confidence': 0.9 - (i * 0.01),
         'trend': i < 15 ? 'declining' : 'stable',
       });
@@ -515,7 +554,7 @@ class GroundwaterDataService {
     return {
       'locationName': locationName,
       'stationCode': stationCode,
-      'predictedDepth': -8.5,
+      'predictedDepth': -5.0, // More realistic value
       'confidence': 0.85,
       'predictionDate': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
       'modelVersion': 'Mock v1.0',

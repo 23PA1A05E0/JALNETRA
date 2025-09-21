@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../providers/groundwater_data_provider.dart';
-import '../services/groundwater_data_service.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 
 /// Advanced Analytics Screen with comprehensive data visualization
 class AdvancedAnalyticsScreen extends ConsumerStatefulWidget {
@@ -22,8 +21,7 @@ class _AdvancedAnalyticsScreenState extends ConsumerState<AdvancedAnalyticsScree
 
   @override
   Widget build(BuildContext context) {
-    final availableLocations = ref.watch(availableLocationsProvider);
-    final allLocationsData = ref.watch(allLocationsDataProvider);
+    final allLocationsData = ref.watch(groundwater.allLocationsDataProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +32,7 @@ class _AdvancedAnalyticsScreenState extends ConsumerState<AdvancedAnalyticsScree
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.invalidate(allLocationsDataProvider);
+              ref.invalidate(groundwater.allLocationsDataProvider);
             },
           ),
         ],
@@ -45,7 +43,7 @@ class _AdvancedAnalyticsScreenState extends ConsumerState<AdvancedAnalyticsScree
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Control Panel
-            _buildControlPanel(availableLocations),
+            _buildControlPanel(ref.watch(groundwater.availableLocationsProvider)),
             const SizedBox(height: 24),
             
             // Key Metrics Cards

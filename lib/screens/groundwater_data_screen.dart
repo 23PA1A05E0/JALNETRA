@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/groundwater_data_provider.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 import '../widgets/location_dropdown_widget.dart';
 
 /// Example screen demonstrating the location dropdown with real API data
@@ -9,7 +9,7 @@ class GroundwaterDataScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedLocation = ref.watch(selectedLocationProvider);
+    final selectedLocation = ref.watch(groundwater.selectedLocationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,7 +70,7 @@ class GroundwaterDataScreen extends ConsumerWidget {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text('${ref.watch(availableLocationsProvider).length} locations available'),
+                        Text('${ref.watch(groundwater.availableLocationsProvider).length} locations available'),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -102,8 +102,8 @@ class TestGroundwaterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final availableLocations = ref.watch(availableLocationsProvider);
-    final selectedLocation = ref.watch(selectedLocationProvider);
+    final availableLocations = ref.watch(groundwater.availableLocationsProvider);
+    final selectedLocation = ref.watch(groundwater.selectedLocationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -129,7 +129,7 @@ class TestGroundwaterScreen extends ConsumerWidget {
                 border: OutlineInputBorder(),
                 labelText: 'Select Location',
               ),
-              items: availableLocations.map((location) {
+              items: ref.watch(groundwater.availableLocationsProvider).map((location) {
                 return DropdownMenuItem<String>(
                   value: location,
                   child: Text(location),
@@ -137,7 +137,7 @@ class TestGroundwaterScreen extends ConsumerWidget {
               }).toList(),
               onChanged: (String? newValue) {
                 if (newValue != null) {
-                  ref.read(selectedLocationProvider.notifier).state = newValue;
+                  ref.read(groundwater.selectedLocationProvider.notifier).state = newValue;
                 }
               },
             ),
@@ -154,7 +154,7 @@ class TestGroundwaterScreen extends ConsumerWidget {
               
               // Test data fetching
               FutureBuilder<Map<String, dynamic>?>(
-                future: ref.read(groundwaterDataProvider(selectedLocation).future),
+                future: ref.read(groundwater.groundwaterDataProvider(selectedLocation).future),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Card(
@@ -232,7 +232,7 @@ class TestGroundwaterScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   // Test API connection
-                  ref.invalidate(allLocationsDataProvider);
+                  ref.invalidate(groundwater.allLocationsDataProvider);
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh Data'),

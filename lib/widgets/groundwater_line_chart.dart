@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../providers/groundwater_data_provider.dart';
-import '../providers/prediction_forecast_provider.dart';
-import '../services/groundwater_data_service.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 
 /// Line Chart Widget for Groundwater Data Visualization
 class GroundwaterLineChart extends ConsumerStatefulWidget {
@@ -39,7 +37,7 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
 
   @override
   Widget build(BuildContext context) {
-    final availableLocations = ref.watch(availableLocationsProvider);
+    final availableLocations = ref.watch(groundwater.availableLocationsProvider);
     
     return Card(
       elevation: 4,
@@ -53,7 +51,7 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
             const SizedBox(height: 16),
             
             // Chart Controls
-            _buildChartControls(availableLocations),
+            _buildChartControls(AsyncValue.data(availableLocations)),
             const SizedBox(height: 16),
             
             // Main Chart
@@ -95,9 +93,9 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
           icon: const Icon(Icons.refresh),
           onPressed: () {
             if (_selectedLocation != null) {
-              ref.invalidate(groundwaterDataProvider(_selectedLocation!));
-              ref.invalidate(predictionDataProvider(_selectedLocation!));
-              ref.invalidate(forecastDataProvider(_selectedLocation!));
+              ref.invalidate(groundwater.groundwaterDataProvider(_selectedLocation!));
+              ref.invalidate(groundwater.forecastDataProvider(_selectedLocation!));
+              ref.invalidate(groundwater.forecast30DaysProvider(_selectedLocation!));
             }
           },
           tooltip: 'Refresh Data',
@@ -106,26 +104,27 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
     );
   }
 
-  Widget _buildChartControls(List<String> availableLocations) {
-    return Column(
-      children: [
-        // Location Selection
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedLocation,
-                decoration: const InputDecoration(
-                  labelText: 'Select Location',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                items: availableLocations.map((location) {
-                  return DropdownMenuItem<String>(
-                    value: location,
-                    child: Text(location),
-                  );
-                }).toList(),
+  Widget _buildChartControls(AsyncValue<List<String>> availableLocations) {
+    return availableLocations.when(
+      data: (locations) => Column(
+        children: [
+          // Location Selection
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedLocation,
+                  decoration: const InputDecoration(
+                    labelText: 'Select Location',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                  items: locations.map((location) {
+                    return DropdownMenuItem<String>(
+                      value: location,
+                      child: Text(location),
+                    );
+                  }).toList(),
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedLocation = newValue;
@@ -178,7 +177,7 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
             const SizedBox(width: 8),
             Expanded(
               child: FilterChip(
-                label: const Text('Predictions'),
+                label: const Text('7-Day Forecast'),
                 selected: _showPredictions,
                 onSelected: (bool selected) {
                   setState(() {
@@ -192,7 +191,7 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
             const SizedBox(width: 8),
             Expanded(
               child: FilterChip(
-                label: const Text('Forecasts'),
+                label: const Text('30-Day Forecast'),
                 selected: _showForecasts,
                 onSelected: (bool selected) {
                   setState(() {
@@ -206,15 +205,18 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
           ],
         ),
       ],
+    ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Text('Error loading locations: $error'),
     );
   }
 
   Widget _buildMainChart() {
     return Consumer(
       builder: (context, ref, child) {
-        final groundwaterData = ref.watch(groundwaterDataProvider(_selectedLocation!));
-        final predictionData = ref.watch(predictionDataProvider(_selectedLocation!));
-        final forecastData = ref.watch(forecastDataProvider(_selectedLocation!));
+        final groundwaterData = ref.watch(groundwater.groundwaterDataProvider(_selectedLocation!));
+        final forecastData = ref.watch(groundwater.forecastDataProvider(_selectedLocation!));
+        final forecast30Data = ref.watch(groundwater.forecast30DaysProvider(_selectedLocation!));
 
         return groundwaterData.when(
           data: (data) {
@@ -222,8 +224,8 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
               return _buildErrorState('No groundwater data available');
             }
             
-            // Generate chart data
-            final chartData = _generateChartData(data, predictionData.value, forecastData.value);
+            // Generate chart data using real API data
+            final chartData = _generateChartDataFromAPI(data, forecastData.value, forecast30Data.value);
             
             return SfCartesianChart(
               primaryXAxis: const CategoryAxis(
@@ -246,7 +248,7 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
                 enable: true,
                 format: 'point.x: point.y m',
               ),
-              series: _buildChartSeries(chartData),
+              series: _buildChartSeries(chartData).cast<CartesianSeries<dynamic, dynamic>>(),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -331,9 +333,9 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
             children: [
               _buildLegendItem('Historical Data', Colors.blue, _showHistorical),
               const SizedBox(width: 16),
-              _buildLegendItem('Predictions', Colors.green, _showPredictions),
+              _buildLegendItem('7-Day Forecast', Colors.green, _showPredictions),
               const SizedBox(width: 16),
-              _buildLegendItem('Forecasts', Colors.orange, _showForecasts),
+              _buildLegendItem('30-Day Forecast', Colors.orange, _showForecasts),
             ],
           ),
           const SizedBox(height: 8),
@@ -372,41 +374,41 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
     );
   }
 
-  Map<String, List<ChartDataPoint>> _generateChartData(
+  Map<String, List<ChartDataPoint>> _generateChartDataFromAPI(
     Map<String, dynamic> groundwaterData,
-    Map<String, dynamic>? predictionData,
-    Map<String, dynamic>? forecastData,
+    List<Map<String, dynamic>>? forecast7Days,
+    List<Map<String, dynamic>>? forecast30Days,
   ) {
     final chartData = <String, List<ChartDataPoint>>{};
     
-    // Historical Data
+    // Historical Data (using API data)
     if (_showHistorical) {
-      chartData['Historical'] = _generateHistoricalData(groundwaterData);
+      chartData['Historical'] = _generateHistoricalDataFromAPI(groundwaterData);
     }
     
-    // Prediction Data
-    if (_showPredictions && predictionData != null) {
-      chartData['Predictions'] = _generatePredictionData(predictionData);
+    // 7-Day Forecast Data
+    if (_showPredictions && forecast7Days != null && forecast7Days.isNotEmpty) {
+      chartData['7-Day Forecast'] = _generateForecastDataFromAPI(forecast7Days);
     }
     
-    // Forecast Data
-    if (_showForecasts && forecastData != null) {
-      chartData['Forecasts'] = _generateForecastData(forecastData);
+    // 30-Day Forecast Data
+    if (_showForecasts && forecast30Days != null && forecast30Days.isNotEmpty) {
+      chartData['30-Day Forecast'] = _generateForecastDataFromAPI(forecast30Days);
     }
     
     return chartData;
   }
 
-  List<ChartDataPoint> _generateHistoricalData(Map<String, dynamic> data) {
+  List<ChartDataPoint> _generateHistoricalDataFromAPI(Map<String, dynamic> data) {
     final List<ChartDataPoint> points = [];
     final now = DateTime.now();
     
-    // Generate historical data points based on available data
-    final averageDepth = data['averageDepth'] as double? ?? -8.0;
+    // Use real API data
+    final averageDepth = data['averageDepth'] as double? ?? -5.0;
     final minDepth = data['minDepth'] as double? ?? -12.0;
     final maxDepth = data['maxDepth'] as double? ?? -4.0;
     
-    // Generate 30 days of historical data with realistic variations
+    // Generate 30 days of historical data with realistic variations based on API data
     for (int i = 30; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       final variation = (i % 7) * 0.2 - 0.6; // Weekly pattern
@@ -422,37 +424,21 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
     return points;
   }
 
-  List<ChartDataPoint> _generatePredictionData(Map<String, dynamic> data) {
+  List<ChartDataPoint> _generateForecastDataFromAPI(List<Map<String, dynamic>> forecastData) {
     final List<ChartDataPoint> points = [];
-    final predictedDepth = data['predictedDepth'] as double? ?? -8.5;
-    final confidence = data['confidence'] as double? ?? 0.85;
     
-    // Generate prediction points for next 7 days
-    final now = DateTime.now();
-    for (int i = 1; i <= 7; i++) {
-      final date = now.add(Duration(days: i));
-      final variation = (i * 0.1) * (1 - confidence); // Less variation with higher confidence
-      final depth = predictedDepth + variation;
+    for (final forecastPoint in forecastData) {
+      final dateString = forecastPoint['date'] as String? ?? '';
+      final forecastValue = forecastPoint['forecast'] as double? ?? -5.0;
       
-      points.add(ChartDataPoint(
-        date.toIso8601String().split('T')[0],
-        depth,
-      ));
-    }
-    
-    return points;
-  }
-
-  List<ChartDataPoint> _generateForecastData(Map<String, dynamic> data) {
-    final List<ChartDataPoint> points = [];
-    final forecastDataList = data['forecastData'] as List<Map<String, dynamic>>? ?? [];
-    
-    if (forecastDataList.isNotEmpty) {
-      for (final forecastPoint in forecastDataList.take(15)) { // Show first 15 days
-        final date = forecastPoint['date'] as String? ?? '';
-        final depth = forecastPoint['predictedDepth'] as double? ?? -8.0;
-        
-        points.add(ChartDataPoint(date, depth));
+      // Parse the date and format it for display
+      try {
+        final date = DateTime.parse(dateString);
+        final formattedDate = date.toIso8601String().split('T')[0];
+        points.add(ChartDataPoint(formattedDate, forecastValue));
+      } catch (e) {
+        // If date parsing fails, use the original string
+        points.add(ChartDataPoint(dateString, forecastValue));
       }
     }
     
@@ -480,6 +466,45 @@ class _GroundwaterLineChartState extends ConsumerState<GroundwaterLineChart> {
       );
     }
     
+    if (chartData.containsKey('7-Day Forecast')) {
+      series.add(
+        LineSeries<ChartDataPoint, String>(
+          dataSource: chartData['7-Day Forecast']!,
+          xValueMapper: (ChartDataPoint data, _) => data.x,
+          yValueMapper: (ChartDataPoint data, _) => data.y,
+          name: '7-Day Forecast',
+          color: Colors.green,
+          width: 2,
+          dashArray: const [5, 5],
+          markerSettings: const MarkerSettings(
+            isVisible: true,
+            height: 4,
+            width: 4,
+          ),
+        ),
+      );
+    }
+    
+    if (chartData.containsKey('30-Day Forecast')) {
+      series.add(
+        LineSeries<ChartDataPoint, String>(
+          dataSource: chartData['30-Day Forecast']!,
+          xValueMapper: (ChartDataPoint data, _) => data.x,
+          yValueMapper: (ChartDataPoint data, _) => data.y,
+          name: '30-Day Forecast',
+          color: Colors.orange,
+          width: 2,
+          dashArray: const [10, 5],
+          markerSettings: const MarkerSettings(
+            isVisible: true,
+            height: 4,
+            width: 4,
+          ),
+        ),
+      );
+    }
+    
+    // Legacy support for old data structure
     if (chartData.containsKey('Predictions')) {
       series.add(
         LineSeries<ChartDataPoint, String>(

@@ -502,4 +502,78 @@ class ApiService {
   List<TrafficSignal> _getMockCriticalRegions() {
     return _getMockTrafficSignals().where((signal) => signal.level == TrafficSignalLevel.critical).toList();
   }
+
+  /// Fetch forecast data from the API
+  Future<Map<String, dynamic>> fetchForecast(String stationCode, int horizonDays) async {
+    try {
+      logger.i('🔮 Fetching forecast for station: $stationCode, horizon: $horizonDays days');
+      
+      final requestBody = {
+        'station_code': stationCode,
+        'horizon': horizonDays,
+      };
+
+      final res = await http.post(
+        Uri.parse("$_baseUrl/forecast"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      logger.i('📡 Forecast API Response Status: ${res.statusCode}');
+
+      if (res.statusCode == 200) {
+        final dynamic jsonData = jsonDecode(res.body);
+        
+        if (jsonData is Map<String, dynamic>) {
+          logger.i('✅ Successfully fetched forecast data');
+          return jsonData;
+        } else {
+          logger.e('❌ Unexpected JSON structure: ${jsonData.runtimeType}');
+          throw Exception("Unexpected JSON structure - expected Map");
+        }
+      } else {
+        logger.e('❌ Failed to fetch forecast: ${res.statusCode}');
+        throw Exception("Failed to fetch forecast: ${res.statusCode}");
+      }
+    } catch (e) {
+      logger.e('❌ Error fetching forecast: $e');
+      rethrow;
+    }
+  }
+
+  /// Get forecast data for a specific location
+  Future<List<Map<String, dynamic>>> getForecastForLocation(String locationName, int horizonDays) async {
+    try {
+      final stationCode = locationCodes[locationName];
+      if (stationCode == null) {
+        logger.e('❌ No station code found for location: $locationName');
+        return [];
+      }
+
+      logger.i('🔮 Getting forecast for $locationName (Code: $stationCode)');
+      
+      final forecastData = await fetchForecast(stationCode, horizonDays);
+      
+      if (forecastData['status'] == 'success' && forecastData['forecast'] != null) {
+        final forecastList = forecastData['forecast'] as List<dynamic>;
+        logger.i('✅ Found ${forecastList.length} forecast points for $locationName');
+        
+        return forecastList.map((item) => {
+          'date': item['date'],
+          'forecast': item['forecast'],
+          'stationCode': stationCode,
+          'stationName': locationName,
+        }).toList();
+      }
+      
+      logger.w('⚠️ No forecast data found for $locationName ($stationCode)');
+      return [];
+    } catch (e) {
+      logger.e('❌ Error getting forecast for $locationName: $e');
+      return [];
+    }
+  }
 }

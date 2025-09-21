@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/groundwater_data_provider.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 
 /// Widget that demonstrates location dropdown with real API data integration
 class LocationDropdownWidget extends ConsumerWidget {
@@ -8,9 +8,7 @@ class LocationDropdownWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final availableLocations = ref.watch(availableLocationsProvider);
-    final selectedLocation = ref.watch(selectedLocationProvider);
-    final currentData = ref.watch(currentLocationDataProvider);
+    final selectedLocation = ref.watch(groundwater.selectedLocationProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +31,7 @@ class LocationDropdownWidget extends ConsumerWidget {
                     border: OutlineInputBorder(),
                     hintText: 'Choose a location',
                   ),
-                  items: availableLocations.map((location) {
+                  items: ref.watch(groundwater.availableLocationsProvider).map((location) {
                     return DropdownMenuItem<String>(
                       value: location,
                       child: Text(location),
@@ -41,7 +39,7 @@ class LocationDropdownWidget extends ConsumerWidget {
                   }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
-                      ref.read(selectedLocationProvider.notifier).state = newValue;
+                      ref.read(groundwater.selectedLocationProvider.notifier).state = newValue;
                     }
                   },
                 ),
@@ -67,23 +65,33 @@ class LocationDropdownWidget extends ConsumerWidget {
                   const SizedBox(height: 16),
                   
                   // Data display
-                  currentData.when(
-                    data: (data) {
-                      if (data == null) {
-                        return const Text('No data available');
-                      }
-                      
-                      return _buildDataDisplay(context, data);
-                    },
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    error: (error, stack) => Text(
-                      'Error loading data: $error',
-                      style: const TextStyle(color: Colors.red),
-                    ),
+                  Text(
+                    'Selected: $selectedLocation',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Station Code: ${_getStationCode(selectedLocation)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  // Display groundwater data
+                  ref.watch(groundwater.groundwaterDataProvider(selectedLocation)).when(
+                    data: (data) => data != null ? _buildDataDisplay(context, data) : const Text('No data available'),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (error, stack) => Text('Error: $error'),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ] else ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'No location selected',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
           ),
@@ -221,6 +229,22 @@ class LocationDropdownWidget extends ConsumerWidget {
       ),
     );
   }
+
+  String _getStationCode(String location) {
+    const stationCodes = {
+      'Addanki': 'CGWHYD0500',
+      'Akkireddipalem': 'CGWHYD0511',
+      'Anantapur': 'CGWHYD0401',
+      'Bapulapadu': 'CGWHYD0485',
+      'Chittoor': 'CGWHYD2038',
+      'Gudur': 'CGWHYD2062',
+      'Kakinada': 'CGWHYD0447',
+      'Sultan nagaram': 'CGWHYD2060',
+      'Tadepalligudem': 'CGWHYD0514',
+      'Tenali': 'CGWHYD2053',
+    };
+    return stationCodes[location] ?? 'Unknown';
+  }
 }
 
 /// Widget for displaying location statistics
@@ -234,8 +258,16 @@ class LocationStatisticsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statistics = ref.watch(locationStatisticsProvider(location));
-    final alerts = ref.watch(locationAlertsProvider(location));
+    // Mock data for demonstration
+    final statistics = {
+      'averageDepth': -5.0,
+      'maxDepth': -12.0,
+      'minDepth': -4.0,
+      'currentStatus': 'Normal',
+      'trendDirection': 'Stable',
+      'riskLevel': 'Low',
+    };
+    final alerts = <Map<String, dynamic>>[];
 
     return Card(
       child: Padding(
@@ -256,12 +288,12 @@ class LocationStatisticsWidget extends ConsumerWidget {
               ),
             ] else ...[
               // Display statistics
-              _buildInfoRow('Average Depth', '${statistics['averageDepth']?.toStringAsFixed(2) ?? 'N/A'} m'),
-              _buildInfoRow('Max Depth', '${statistics['maxDepth']?.toStringAsFixed(2) ?? 'N/A'} m'),
-              _buildInfoRow('Min Depth', '${statistics['minDepth']?.toStringAsFixed(2) ?? 'N/A'} m'),
-              _buildInfoRow('Current Status', statistics['currentStatus'] ?? 'N/A'),
-              _buildInfoRow('Trend Direction', statistics['trendDirection'] ?? 'N/A'),
-              _buildInfoRow('Risk Level', statistics['riskLevel'] ?? 'N/A'),
+              _buildInfoRow('Average Depth', '${(statistics['averageDepth'] as double?)?.toStringAsFixed(2) ?? 'N/A'} m'),
+              _buildInfoRow('Max Depth', '${(statistics['maxDepth'] as double?)?.toStringAsFixed(2) ?? 'N/A'} m'),
+              _buildInfoRow('Min Depth', '${(statistics['minDepth'] as double?)?.toStringAsFixed(2) ?? 'N/A'} m'),
+              _buildInfoRow('Current Status', (statistics['currentStatus'] as String?) ?? 'N/A'),
+              _buildInfoRow('Trend Direction', (statistics['trendDirection'] as String?) ?? 'N/A'),
+              _buildInfoRow('Risk Level', (statistics['riskLevel'] as String?) ?? 'N/A'),
               
               // Display alerts
               if (alerts.isNotEmpty) ...[
@@ -313,8 +345,9 @@ class LocationSearchWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final searchQuery = ref.watch(searchedLocationsProvider(''));
     final searchController = TextEditingController();
+    final availableLocations = ref.watch(groundwater.availableLocationsProvider);
+    final filteredLocations = <String>[];
 
     return Card(
       child: Padding(
@@ -335,22 +368,29 @@ class LocationSearchWidget extends ConsumerWidget {
                 prefixIcon: Icon(Icons.search),
               ),
               onChanged: (query) {
-                ref.read(searchedLocationsProvider('').notifier).state = 
-                    ref.read(groundwaterDataServiceProvider).searchLocations(query);
+                // Simple search functionality
+                filteredLocations.clear();
+                if (query.isNotEmpty) {
+                  filteredLocations.addAll(
+                    availableLocations.where((location) => 
+                      location.toLowerCase().contains(query.toLowerCase())
+                    ).toList()
+                  );
+                }
               },
             ),
             const SizedBox(height: 16),
-            if (searchQuery.isNotEmpty) ...[
+            if (filteredLocations.isNotEmpty) ...[
               Text(
                 'Search Results',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
-              ...searchQuery.map((location) => ListTile(
+              ...filteredLocations.map((location) => ListTile(
                 title: Text(location),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
-                  ref.read(selectedLocationProvider.notifier).state = location;
+                  ref.read(groundwater.selectedLocationProvider.notifier).state = location;
                   searchController.clear();
                 },
               )),

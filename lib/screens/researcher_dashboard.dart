@@ -5,7 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
-import '../providers/groundwater_data_provider.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 import '../providers/prediction_forecast_provider.dart';
 import '../providers/traffic_signal_provider.dart';
 import '../services/api_service.dart';
@@ -173,7 +173,12 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       map.putIfAbsent(s, () => <String>[]);
     }
     stateDistricts = map;
-    // Load states from service
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load states from service after ref is available
     ref.read(locationSearchProvider.notifier).loadStates();
   }
 
@@ -210,7 +215,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             onPressed: () {
               ref.read(refreshTrafficSignalsProvider)();
               // Refresh other data as well
-              ref.invalidate(groundwaterDataProvider);
+              ref.invalidate(groundwater.groundwaterDataProvider);
             },
             tooltip: 'Refresh Data',
           ),
@@ -316,7 +321,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   double _getMockMinDepth() {
     final random = DateTime.now().millisecondsSinceEpoch % 100;
-    return -8.0 - (random / 15);
+    return -5.0 - (random / 20); // More realistic range
   }
 
   double _getMockMaxDepth() {
@@ -3115,7 +3120,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   Widget _buildPredictionChart() {
     return Consumer(
       builder: (context, ref, child) {
-        final availableLocations = ref.watch(availableLocationsProvider);
+        final availableLocations = ref.watch(groundwater.availableLocationsProvider);
         
         if (availableLocations.isEmpty) {
           return const Center(
@@ -3125,7 +3130,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         
         // Use first available location as default
         final selectedLocation = availableLocations.first;
-        final groundwaterData = ref.watch(groundwaterDataProvider(selectedLocation));
+        final groundwaterData = ref.watch(groundwater.groundwaterDataProvider(selectedLocation));
         final predictionData = ref.watch(predictionDataProvider(selectedLocation));
         final forecastData = ref.watch(forecastDataProvider(selectedLocation));
         
@@ -3153,7 +3158,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                 isInversed: true,
               ),
               title: charts.ChartTitle(
-                text: 'Groundwater Prediction - ${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'}',
+                text: 'Groundwater Forecast - ${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'}',
                 textStyle: Theme.of(context).textTheme.titleSmall,
               ),
               legend: const charts.Legend(
@@ -3166,40 +3171,12 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               ),
               series: <charts.CartesianSeries<ChartDataPoint, String>>[
                 charts.LineSeries<ChartDataPoint, String>(
-                  dataSource: chartData['historical'] ?? [],
-                  xValueMapper: (ChartDataPoint data, _) => data.x,
-                  yValueMapper: (ChartDataPoint data, _) => data.y,
-                  name: 'Historical',
-                  color: Colors.blue,
-                  width: 2,
-                  markerSettings: const charts.MarkerSettings(
-                    isVisible: true,
-                    height: 4,
-                    width: 4,
-                  ),
-                ),
-                charts.LineSeries<ChartDataPoint, String>(
-                  dataSource: chartData['prediction'] ?? [],
-                  xValueMapper: (ChartDataPoint data, _) => data.x,
-                  yValueMapper: (ChartDataPoint data, _) => data.y,
-                  name: 'Prediction',
-                  color: Colors.green,
-                  width: 2,
-                  dashArray: const [5, 5],
-                  markerSettings: const charts.MarkerSettings(
-                    isVisible: true,
-                    height: 4,
-                    width: 4,
-                  ),
-                ),
-                charts.LineSeries<ChartDataPoint, String>(
                   dataSource: chartData['forecast'] ?? [],
                   xValueMapper: (ChartDataPoint data, _) => data.x,
                   yValueMapper: (ChartDataPoint data, _) => data.y,
                   name: 'Forecast',
-                  color: Colors.orange,
+                  color: Colors.blue,
                   width: 2,
-                  dashArray: const [10, 5],
                   markerSettings: const charts.MarkerSettings(
                     isVisible: true,
                     height: 4,
@@ -3216,7 +3193,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     );
   }
 
-  /// Generate prediction chart data based on selected period
+  /// Generate forecast chart data based on selected period
   Map<String, List<ChartDataPoint>> _generatePredictionChartData(
     Map<String, dynamic> groundwaterData,
     Map<String, dynamic>? predictionData,
@@ -3224,46 +3201,12 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     String period,
   ) {
     final chartData = <String, List<ChartDataPoint>>{};
-    final now = DateTime.now();
     
-    // Historical data (last 30 days)
-    final historicalData = <ChartDataPoint>[];
-    final averageDepth = groundwaterData['averageDepth'] as double? ?? -8.0;
-    final minDepth = groundwaterData['minDepth'] as double? ?? -12.0;
-    final maxDepth = groundwaterData['maxDepth'] as double? ?? -4.0;
+    // No historical data - only show forecast data
+    chartData['historical'] = <ChartDataPoint>[];
+    chartData['prediction'] = <ChartDataPoint>[];
     
-    for (int i = 30; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final variation = (i % 7) * 0.2 - 0.6;
-      final randomVariation = (date.day % 5) * 0.1 - 0.2;
-      final depth = averageDepth + variation + randomVariation;
-      
-      historicalData.add(ChartDataPoint(
-        date.toIso8601String().split('T')[0],
-        depth.clamp(minDepth, maxDepth),
-      ));
-    }
-    chartData['historical'] = historicalData;
-    
-    // Prediction data based on selected period
-    final predictionDataPoints = <ChartDataPoint>[];
-    final days = period == '1week' ? 7 : 30;
-    final predictedDepth = predictionData?['predictedDepth'] as double? ?? averageDepth;
-    final confidence = predictionData?['confidence'] as double? ?? 0.85;
-    
-    for (int i = 1; i <= days; i++) {
-      final date = now.add(Duration(days: i));
-      final variation = (i * 0.1) * (1 - confidence);
-      final depth = predictedDepth + variation;
-      
-      predictionDataPoints.add(ChartDataPoint(
-        date.toIso8601String().split('T')[0],
-        depth,
-      ));
-    }
-    chartData['prediction'] = predictionDataPoints;
-    
-    // Forecast data
+    // Forecast data only
     final forecastDataPoints = <ChartDataPoint>[];
     final forecastDataList = forecastData?['forecastData'] as List<Map<String, dynamic>>? ?? [];
     
@@ -3271,7 +3214,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       final limit = period == '1week' ? 7 : 15;
       for (final forecastPoint in forecastDataList.take(limit)) {
         final date = forecastPoint['date'] as String? ?? '';
-        final depth = forecastPoint['predictedDepth'] as double? ?? -8.0;
+        final depth = forecastPoint['forecast'] as double? ?? -5.0; // Use 'forecast' field and realistic fallback
         
         forecastDataPoints.add(ChartDataPoint(date, depth));
       }

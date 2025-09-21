@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/groundwater_data_provider.dart';
+import '../providers/groundwater_data_provider.dart' as groundwater;
 
 /// Simple test screen to verify groundwater data integration
 class GroundwaterTestScreen extends ConsumerWidget {
@@ -8,8 +8,8 @@ class GroundwaterTestScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final availableLocations = ref.watch(availableLocationsProvider);
-    final selectedLocation = ref.watch(selectedLocationProvider);
+    final availableLocations = ref.watch(groundwater.availableLocationsProvider);
+    final selectedLocation = ref.watch(groundwater.selectedLocationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -60,7 +60,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                         border: OutlineInputBorder(),
                         hintText: 'Choose a location',
                       ),
-                      items: availableLocations.map((location) {
+                      items: ref.watch(groundwater.availableLocationsProvider).map((location) {
                         return DropdownMenuItem<String>(
                           value: location,
                           child: Text(location),
@@ -68,7 +68,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                       }).toList(),
                       onChanged: (String? newValue) {
                         if (newValue != null) {
-                          ref.read(selectedLocationProvider.notifier).state = newValue;
+                          ref.read(groundwater.selectedLocationProvider.notifier).state = newValue;
                         }
                       },
                     ),
@@ -95,7 +95,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                       
                       // Test API call
                       FutureBuilder<Map<String, dynamic>?>(
-                        future: ref.read(groundwaterDataProvider(selectedLocation).future),
+                        future: ref.read(groundwater.groundwaterDataProvider(selectedLocation).future),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const Center(
@@ -188,7 +188,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      ref.invalidate(allLocationsDataProvider);
+                      ref.invalidate(groundwater.allLocationsDataProvider);
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Refresh All Data'),
@@ -198,7 +198,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      ref.invalidate(selectedLocationProvider);
+                      ref.invalidate(groundwater.selectedLocationProvider);
                     },
                     icon: const Icon(Icons.clear),
                     label: const Text('Clear Selection'),
@@ -223,7 +223,7 @@ class GroundwaterTestScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text('API URL: https://groundwater-level-predictor-backend.onrender.com/features'),
-                    Text('Available Locations: ${availableLocations.length}'),
+                    Text('Available Locations: ${ref.watch(groundwater.availableLocationsProvider).length}'),
                     const Text('Integration Status: ✅ Connected'),
                     const Text('Data Sync: ✅ Real-time'),
                   ],
