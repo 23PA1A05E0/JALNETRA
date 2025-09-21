@@ -2131,7 +2131,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         final selectedLocation = selectedCity ?? availableLocations.first;
         final groundwaterData = ref.watch(groundwater.groundwaterDataProvider(selectedLocation));
         final predictionData = ref.watch(predictionDataProvider(selectedLocation));
-        final forecastData = ref.watch(groundwater.forecastDataProvider(selectedLocation));
+        final forecastData = ref.watch(groundwater.forecast30DaysProvider(selectedLocation));
         
         return groundwaterData.when(
           data: (data) {
@@ -2143,7 +2143,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             final chartData = _generatePredictionChartData(
               data,
               predictionData.value,
-              forecastData.value != null ? {'forecast': forecastData.value} : null,
+              forecastData.value,
               _selectedPredictionPeriod,
             );
             
@@ -2196,7 +2196,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   Map<String, List<ChartDataPoint>> _generatePredictionChartData(
     Map<String, dynamic> groundwaterData,
     Map<String, dynamic>? predictionData,
-    Map<String, dynamic>? forecastData,
+    List<Map<String, dynamic>>? forecastData,
     String period,
   ) {
     final chartData = <String, List<ChartDataPoint>>{};
@@ -2207,18 +2207,27 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     
     // Forecast data only
     final forecastDataPoints = <ChartDataPoint>[];
-    final forecastDataList = forecastData?['forecast'] as List<Map<String, dynamic>>? ?? [];
+    final forecastDataList = forecastData ?? [];
     
     if (forecastDataList.isNotEmpty) {
       final limit = period == '1week' ? 7 : 30; // Show all 30 days for 1 month
-      for (final forecastPoint in forecastDataList.take(limit)) {
+      print('🔍 DEBUG: Period: $period, Limit: $limit, Total forecast points: ${forecastDataList.length}');
+      print('🔍 DEBUG: Forecast data list: $forecastDataList');
+      
+      // Take only the specified number of points
+      final limitedData = forecastDataList.take(limit).toList();
+      print('🔍 DEBUG: Limited data points: ${limitedData.length}');
+      
+      for (final forecastPoint in limitedData) {
         final date = forecastPoint['date'] as String? ?? '';
         final depth = forecastPoint['forecast'] as double? ?? -5.0; // Use 'forecast' field and realistic fallback
         
         // Format date for better display
         final formattedDate = _formatDateForChart(date);
         forecastDataPoints.add(ChartDataPoint(formattedDate, depth));
+        print('🔍 DEBUG: Added point: $formattedDate -> $depth');
       }
+      print('🔍 DEBUG: Generated ${forecastDataPoints.length} chart points for $period');
     }
     chartData['forecast'] = forecastDataPoints;
     

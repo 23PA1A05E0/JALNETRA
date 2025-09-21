@@ -3211,14 +3211,23 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     
     if (forecastDataList.isNotEmpty) {
       final limit = period == '1week' ? 7 : 30; // Show all 30 days for 1 month
-      for (final forecastPoint in forecastDataList.take(limit)) {
+      print('🔍 DEBUG: Period: $period, Limit: $limit, Total forecast points: ${forecastDataList.length}');
+      print('🔍 DEBUG: Forecast data list: $forecastDataList');
+      
+      // Take only the specified number of points
+      final limitedData = forecastDataList.take(limit).toList();
+      print('🔍 DEBUG: Limited data points: ${limitedData.length}');
+      
+      for (final forecastPoint in limitedData) {
         final date = forecastPoint['date'] as String? ?? '';
         final depth = forecastPoint['forecast'] as double? ?? -5.0; // Use 'forecast' field and realistic fallback
         
         // Format date for better display
         final formattedDate = _formatDateForChart(date);
         forecastDataPoints.add(ChartDataPoint(formattedDate, depth));
+        print('🔍 DEBUG: Added point: $formattedDate -> $depth');
       }
+      print('🔍 DEBUG: Generated ${forecastDataPoints.length} chart points for $period');
     }
     chartData['forecast'] = forecastDataPoints;
     
