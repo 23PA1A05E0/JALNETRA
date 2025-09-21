@@ -242,11 +242,11 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     'Lucknow': ['Gomti Nagar', 'Hazratganj', 'Alambagh', 'Indira Nagar'],
     // Andhra Pradesh cities
     'Nellore': ['Gudur'],
-    'Prakasam': ['Addanki', 'Akkireddypalem'],
+    'Prakasam': ['Addanki', 'Akkireddipalem'],
     'Anantapur': ['Anantapur'],
     'Krishna': ['Bapulapadu'],
     'Chittoor': ['Chittoor'],
-    'East Godavari': ['Kakinada', 'Sulthanagaram'],
+    'East Godavari': ['Kakinada', 'Sultan nagaram'],
     'West Godavari': ['Tadepalligudem'],
     'Guntur': ['Tenali'],
   };
@@ -1242,15 +1242,21 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     final analyticsData = _getAnalyticsData();
     final avgDepth = analyticsData['averageDepth'] as double? ?? 0.0;
     
-    // Convert to positive value for easier comparison
-    final depthValue = avgDepth.abs();
+    // Debug logging
+    print('🔍 DEBUG: Sultan nagaram averageDepth = $avgDepth');
+    print('🔍 DEBUG: Analytics data = $analyticsData');
     
-    if (depthValue >= 0 && depthValue <= 5) {
-      return 'good'; // Green: 0 to -5 meters
-    } else if (depthValue >= 6 && depthValue <= 16) {
-      return 'warning'; // Orange: -6 to -16 meters
+    // For groundwater depth, negative values are normal (below ground level)
+    // More negative = deeper = worse condition
+    if (avgDepth >= -5.0) {
+      print('🔍 DEBUG: Returning GOOD (green) for depth $avgDepth');
+      return 'good'; // Green: 0 to -5 meters (shallow)
+    } else if (avgDepth < -5.0 && avgDepth >= -16.0) {
+      print('🔍 DEBUG: Returning WARNING (orange) for depth $avgDepth');
+      return 'warning'; // Orange: -5.1 to -16 meters (moderate)
     } else {
-      return 'critical'; // Red: beyond -16 meters
+      print('🔍 DEBUG: Returning CRITICAL (red) for depth $avgDepth');
+      return 'critical'; // Red: beyond -16 meters (deep/critical)
     }
   }
 
@@ -2121,8 +2127,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           );
         }
         
-        // Use first available location as default
-        final selectedLocation = availableLocations.first;
+        // Use selected city from dropdown, fallback to first available location
+        final selectedLocation = selectedCity ?? availableLocations.first;
         final groundwaterData = ref.watch(groundwater.groundwaterDataProvider(selectedLocation));
         final predictionData = ref.watch(predictionDataProvider(selectedLocation));
         final forecastData = ref.watch(groundwater.forecastDataProvider(selectedLocation));
@@ -2137,7 +2143,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             final chartData = _generatePredictionChartData(
               data,
               predictionData.value,
-              forecastData.value?.isNotEmpty == true ? {'forecastData': forecastData.value} : null,
+              forecastData.value != null ? {'forecast': forecastData.value} : null,
               _selectedPredictionPeriod,
             );
             
@@ -2151,7 +2157,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                 isInversed: true,
               ),
               title: charts.ChartTitle(
-                text: 'Groundwater Forecast - ${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'}',
+                text: 'Groundwater Forecast - ${selectedLocation} (${_selectedPredictionPeriod == '1week' ? '1 Week' : '1 Month'})',
                 textStyle: Theme.of(context).textTheme.titleSmall,
               ),
               legend: const charts.Legend(
@@ -2201,20 +2207,39 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     
     // Forecast data only
     final forecastDataPoints = <ChartDataPoint>[];
-    final forecastDataList = forecastData?['forecastData'] as List<Map<String, dynamic>>? ?? [];
+    final forecastDataList = forecastData?['forecast'] as List<Map<String, dynamic>>? ?? [];
     
     if (forecastDataList.isNotEmpty) {
-      final limit = period == '1week' ? 7 : 15;
+      final limit = period == '1week' ? 7 : 30; // Show all 30 days for 1 month
       for (final forecastPoint in forecastDataList.take(limit)) {
         final date = forecastPoint['date'] as String? ?? '';
         final depth = forecastPoint['forecast'] as double? ?? -5.0; // Use 'forecast' field and realistic fallback
         
-        forecastDataPoints.add(ChartDataPoint(date, depth));
+        // Format date for better display
+        final formattedDate = _formatDateForChart(date);
+        forecastDataPoints.add(ChartDataPoint(formattedDate, depth));
       }
     }
     chartData['forecast'] = forecastDataPoints;
     
     return chartData;
+  }
+
+  /// Format date for chart display
+  String _formatDateForChart(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day.toString().padLeft(2, '0')}-${_getMonthAbbreviation(date.month)}';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  /// Get month abbreviation
+  String _getMonthAbbreviation(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
   }
 
 

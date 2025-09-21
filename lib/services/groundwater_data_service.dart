@@ -198,14 +198,14 @@ class GroundwaterDataService {
 
   /// Determine current status based on depth and trends
   String _getCurrentStatus(double averageDepth, Map<String, dynamic>? yearlyChange) {
-    if (averageDepth > -5.0) {
-      return 'Critical';
-    } else if (averageDepth > -8.0) {
-      return 'Moderate';
-    } else if (averageDepth > -12.0) {
-      return 'Good';
+    // For groundwater depth, negative values are normal (below ground level)
+    // More negative = deeper = worse condition
+    if (averageDepth >= -5.0) {
+      return 'Good'; // Green: 0 to -5 meters (shallow)
+    } else if (averageDepth < -5.0 && averageDepth >= -16.0) {
+      return 'Moderate'; // Orange: -5.1 to -16 meters (moderate)
     } else {
-      return 'Excellent';
+      return 'Critical'; // Red: beyond -16 meters (deep/critical)
     }
   }
 

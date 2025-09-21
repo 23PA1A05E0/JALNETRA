@@ -857,7 +857,7 @@ class _PredictionForecastScreenState extends ConsumerState<PredictionForecastScr
       return const SizedBox.shrink();
     }
     
-    final depths = forecastDataList.map((d) => d['predictedDepth'] as double).toList();
+    final depths = forecastDataList.map((d) => d['forecast'] as double).toList();
     final minDepth = depths.reduce((a, b) => a < b ? a : b);
     final maxDepth = depths.reduce((a, b) => a > b ? a : b);
     final avgDepth = depths.reduce((a, b) => a + b) / depths.length;
