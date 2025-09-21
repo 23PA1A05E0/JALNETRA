@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
-import '../providers/manual_data_provider.dart';
 import '../providers/groundwater_data_provider.dart' as groundwater;
 import '../providers/prediction_forecast_provider.dart';
 import '../services/api_service.dart';
@@ -900,6 +899,10 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             setState(() {
               selectedCity = value;
             });
+            // Update the selected location provider for API data
+            if (value != null) {
+              ref.read(groundwater.selectedLocationProvider.notifier).state = value;
+            }
           },
         ),
       ],
@@ -1511,7 +1514,9 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   Widget _buildYearlyChangeCard() {
     return Consumer(
       builder: (context, ref, child) {
-        final stationData = ref.watch(stationDataProvider);
+        final availableLocations = ref.watch(groundwater.availableLocationsProvider);
+        final selectedLocation = ref.watch(groundwater.selectedLocationProvider) ?? availableLocations.first;
+        final stationData = ref.watch(groundwater.groundwaterDataProvider(selectedLocation));
         
         return Card(
           elevation: 4,
@@ -1524,7 +1529,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
               children: [
                 stationData.when(
                   data: (data) {
-                    final yearlyChange = _calculateYearlyChangeFromAPI(data);
+                    final yearlyChange = _extractYearlyChangeFromAPI(data);
                     return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2012,26 +2017,30 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     return {'min': minDepth, 'max': maxDepth};
   }
 
-  double _calculateYearlyChangeFromAPI(Map<String, dynamic>? data) {
+  double _extractYearlyChangeFromAPI(Map<String, dynamic>? data) {
     if (data == null) return 0.0;
     
-    final currentLevel = data['latestWaterLevel'] as double? ?? 0.0;
-    final historicalData = data['historicalData'] as List<dynamic>? ?? [];
+    // Extract yearly change from the API data structure
+    final yearlyChangeData = data['yearlyChange'];
     
-    if (historicalData.isEmpty) return 0.0;
-    
-    // Find data from one year ago (simplified - in real app, use proper date filtering)
-    final oneYearAgoData = historicalData.length > 12 
-        ? historicalData[historicalData.length - 12] 
-        : historicalData.first;
-    
-    double previousLevel = 0.0;
-    if (oneYearAgoData is Map<String, dynamic>) {
-      previousLevel = oneYearAgoData['waterLevel'] as double? ?? 0.0;
+    if (yearlyChangeData is Map<String, dynamic>) {
+      // Get the latest year's change (2025 if available, otherwise 2024)
+      if (yearlyChangeData.containsKey('2025')) {
+        final change2025 = yearlyChangeData['2025'];
+        if (change2025 is num) {
+          return change2025.toDouble();
+        }
+      } else if (yearlyChangeData.containsKey('2024')) {
+        final change2024 = yearlyChangeData['2024'];
+        if (change2024 is num) {
+          return change2024.toDouble();
+        }
+      }
+    } else if (yearlyChangeData is num) {
+      return yearlyChangeData.toDouble();
     }
     
-    // Positive means water level went down (bad), negative means it went up (good)
-    return currentLevel - previousLevel;
+    return 0.0;
   }
 
 
@@ -2363,6 +2372,10 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
       child: ElevatedButton(
         onPressed: () async {
           if (!showAnalytics) {
+            // Set the selected location provider for API data
+            if (selectedCity != null) {
+              ref.read(groundwater.selectedLocationProvider.notifier).state = selectedCity!;
+            }
             // Fetch API data when showing analytics
             await _fetchApiAnalyticsData();
           }
@@ -2517,6 +2530,11 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
       selectedDistrict = mappedDistrict;
       selectedCity = mappedCity;
     });
+    
+    // Update the selected location provider for API data
+    if (mappedCity != null) {
+      ref.read(groundwater.selectedLocationProvider.notifier).state = mappedCity;
+    }
 
     if (mappedState != null && mappedState.isNotEmpty) {
       ref.read(locationSearchProvider.notifier).loadDistricts(mappedState);

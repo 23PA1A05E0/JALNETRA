@@ -896,6 +896,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   setState(() {
                     selectedCity = newValue;
                   });
+                  // Update the selected location provider for API data
+                  if (newValue != null) {
+                    ref.read(groundwater.selectedLocationProvider.notifier).state = newValue;
+                  }
                 },
               ),
             ],
@@ -1448,6 +1452,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
       child: ElevatedButton(
         onPressed: () async {
           if (!showAnalytics) {
+            // Set the selected location provider for API data
+            if (selectedCity != null) {
+              ref.read(groundwater.selectedLocationProvider.notifier).state = selectedCity!;
+            }
             // Fetch API data when showing analytics
             await _fetchApiAnalyticsData();
           }
@@ -2591,6 +2599,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             setState(() {
               selectedCity = value;
             });
+            // Update the selected location provider for API data
+            if (value != null) {
+              ref.read(groundwater.selectedLocationProvider.notifier).state = value;
+            }
           },
         ),
       ],
@@ -2649,6 +2661,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             selectedDistrict = district;
             selectedCity = _currentPlacemark!.locality;
           });
+          
+          // Update the selected location provider for API data
+          if (_currentPlacemark!.locality != null) {
+            ref.read(groundwater.selectedLocationProvider.notifier).state = _currentPlacemark!.locality!;
+          }
         }
       }
 
@@ -2722,69 +2739,204 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Yearly Change Card
   Widget _buildYearlyChangeCard() {
-    final yearlyChange = _getMockYearlyChange();
-    final isPositive = yearlyChange > 0;
-    return Card(
-      elevation: 4,
-      color: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isPositive 
-                      ? Colors.red.withOpacity(0.2)
-                      : const Color(0xFF6A1B9A).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    isPositive ? Icons.trending_up : Icons.trending_down,
-                    color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
-                    size: 20,
-                  ),
+    return Consumer(
+      builder: (context, ref, child) {
+        final availableLocations = ref.watch(groundwater.availableLocationsProvider);
+        final selectedLocation = ref.watch(groundwater.selectedLocationProvider) ?? availableLocations.first;
+        final stationData = ref.watch(groundwater.groundwaterDataProvider(selectedLocation));
+        
+        return stationData.when(
+          data: (data) {
+            final yearlyChange = _extractYearlyChangeFromAPI(data);
+            final isPositive = yearlyChange > 0;
+            return Card(
+              elevation: 4,
+              color: Theme.of(context).cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isPositive 
+                              ? Colors.red.withOpacity(0.2)
+                              : const Color(0xFF6A1B9A).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            isPositive ? Icons.trending_up : Icons.trending_down,
+                            color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Yearly Change',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isPositive ? Colors.red[700] : const Color(0xFF6A1B9A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${isPositive ? '+' : ''}${yearlyChange.toStringAsFixed(1)} m',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isPositive ? 'Water level declining' : 'Water level improving',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Yearly Change',
+              ),
+            );
+          },
+          loading: () => Card(
+            elevation: 4,
+            color: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.trending_up,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Yearly Change',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Loading...',
                     style: TextStyle(
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isPositive ? Colors.red[700] : const Color(0xFF6A1B9A),
+                      color: Colors.grey,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${isPositive ? '+' : ''}${yearlyChange.toStringAsFixed(1)} m',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              isPositive ? 'Water level rising' : 'Water level declining',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
+          ),
+          error: (error, stack) => Card(
+            elevation: 4,
+            color: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Yearly Change',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Error loading data',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
+  double _extractYearlyChangeFromAPI(Map<String, dynamic>? data) {
+    if (data == null) return 0.0;
+    
+    // Extract yearly change from the API data structure
+    final yearlyChangeData = data['yearlyChange'];
+    
+    if (yearlyChangeData is Map<String, dynamic>) {
+      // Get the latest year's change (2025 if available, otherwise 2024)
+      if (yearlyChangeData.containsKey('2025')) {
+        final change2025 = yearlyChangeData['2025'];
+        if (change2025 is num) {
+          return change2025.toDouble();
+        }
+      } else if (yearlyChangeData.containsKey('2024')) {
+        final change2024 = yearlyChangeData['2024'];
+        if (change2024 is num) {
+          return change2024.toDouble();
+        }
+      }
+    } else if (yearlyChangeData is num) {
+      return yearlyChangeData.toDouble();
+    }
+    
+    return 0.0;
+  }
 
   /// Build Monthly Forecast Card
   Widget _buildMonthlyForecastCard() {
