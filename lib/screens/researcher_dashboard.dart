@@ -7,7 +7,10 @@ import 'package:syncfusion_flutter_charts/charts.dart' as charts;
 import '../providers/location_search_provider.dart';
 import '../providers/groundwater_data_provider.dart';
 import '../providers/prediction_forecast_provider.dart';
+import '../providers/traffic_signal_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/traffic_signal_widget.dart';
+import '../widgets/realtime_line_chart.dart';
 import 'package:logger/logger.dart';
 
 final logger = Logger();
@@ -199,6 +202,20 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           : null,
         actions: [
           IconButton(
+            icon: const Icon(Icons.traffic),
+            onPressed: () => context.push('/traffic-signals'),
+            tooltip: 'View Traffic Signals',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.read(refreshTrafficSignalsProvider)();
+              // Refresh other data as well
+              ref.invalidate(groundwaterDataProvider);
+            },
+            tooltip: 'Refresh Data',
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
             tooltip: 'Settings',
@@ -223,6 +240,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               _buildInformationContent(),
             if (selectedOption == 'data')
               _buildDataDownloadContent(),
+            if (selectedOption == 'analytics')
+              _buildAnalyticsContent(),
           ],
                   ),
                 ),
@@ -316,60 +335,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     return -0.5 - (random / 200);
   }
 
-  /// Build API error message widget
-  Widget _buildApiErrorMessage() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.error_outline,
-            color: Colors.red[600],
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'API Data Unavailable',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red[700],
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _apiErrorMessage ?? 'Unknown error',
-                  style: TextStyle(
-                    color: Colors.red[600],
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Showing mock data instead',
-                  style: TextStyle(
-                    color: Colors.orange[600],
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Build welcome section
   Widget _buildWelcomeSection() {
@@ -520,8 +485,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               title: 'I want analytics',
               description: 'Access the same features as citizens with detailed analytics',
               icon: Icons.analytics,
-              onTap: () => setState(() => selectedOption = 'information'),
-              isSelected: selectedOption == 'information',
+              onTap: () => setState(() => selectedOption = 'analytics'),
+              isSelected: selectedOption == 'analytics',
             ),
             
             const SizedBox(height: 16),
@@ -628,6 +593,28 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     );
   }
 
+  /// Build analytics content (same as citizen dashboard)
+  Widget _buildAnalyticsContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Location Selection Section
+        _buildLocationSelectionSection(),
+        const SizedBox(height: 24),
+        
+        // Analytics Button
+        if (selectedState != null && selectedDistrict != null && selectedCity != null)
+          _buildAnalyticsButton(),
+        
+        const SizedBox(height: 24),
+        
+        // Analytics Features (same as citizen dashboard)
+        if (showAnalytics && selectedState != null && selectedDistrict != null && selectedCity != null)
+          _buildAnalyticsFeatures(),
+      ],
+    );
+  }
+
   /// Build information content (same as citizen dashboard)
   Widget _buildInformationContent() {
     return Column(
@@ -646,6 +633,177 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         // Analytics Features (same as citizen dashboard)
         if (showAnalytics && selectedState != null && selectedDistrict != null && selectedCity != null)
           _buildAnalyticsFeatures(),
+      ],
+    );
+  }
+
+  /// Build analytics button (same as citizen dashboard)
+  Widget _buildAnalyticsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () async {
+          if (!showAnalytics) {
+            // Fetch API data when showing analytics
+            await _fetchApiAnalyticsData();
+          }
+          setState(() {
+            showAnalytics = !showAnalytics;
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6A1B9A),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 6,
+        ),
+        child: _isLoadingApiData
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Loading Analytics...',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              )
+            : Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(showAnalytics ? Icons.visibility_off : Icons.analytics, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              showAnalytics ? 'Hide Analytics' : 'Show Analytics',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            Icon(showAnalytics ? Icons.keyboard_arrow_up : Icons.arrow_forward, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build API error message
+  Widget _buildApiErrorMessage() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red[600], size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _apiErrorMessage ?? 'Unknown error',
+              style: TextStyle(
+                color: Colors.red[700],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () async {
+              await _fetchApiAnalyticsData();
+            },
+            icon: Icon(Icons.refresh, color: Colors.red[600]),
+            tooltip: 'Retry',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build analytics features (same as citizen dashboard)
+  Widget _buildAnalyticsFeatures() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show API error message if any
+        if (_apiErrorMessage != null)
+          _buildApiErrorMessage(),
+        
+        // Section Header
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.analytics, color: Colors.white, size: 28),
+              const SizedBox(width: 12),
+              const Text(
+                'Water Analytics & Insights',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Regional Traffic Signal Status
+        _buildRegionalTrafficSignalCard(),
+        
+        const SizedBox(height: 16),
+        
+        // Real-time Line Chart
+        _buildRealtimeLineChart(),
+        
+        const SizedBox(height: 16),
+        
+        // Depth Analytics Row
+        Row(
+          children: [
+            Expanded(child: _buildAverageDepthCard()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildMinMaxDepthCard()),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Yearly Change Row
+        Row(
+          children: [
+            Expanded(child: _buildYearlyChangeCard()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDayForecastCard()),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Prediction Chart Row
+        _buildPredictionChartRow(),
       ],
     );
   }
@@ -1398,192 +1556,206 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     );
   }
 
-  Widget _buildAnalyticsButton() {
-    return Center(
-      child: ElevatedButton(
-        onPressed: () async {
-          if (!showAnalytics) {
-            // Fetch API data when showing analytics
-            await _fetchApiAnalyticsData();
-          }
-          setState(() => showAnalytics = !showAnalytics);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6A1B9A),
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: _isLoadingApiData
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Loading Analytics...',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              )
-            : Text(
-                showAnalytics ? 'Hide Analytics' : 'Show Analytics',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+  /// Build Regional Traffic Signal Card
+  Widget _buildRegionalTrafficSignalCard() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final isLoading = ref.watch(trafficSignalLoadingProvider);
+        final error = ref.watch(trafficSignalErrorProvider);
+        
+        if (isLoading) {
+          return Card(
+            elevation: 6,
+            color: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: CircularProgressIndicator(),
               ),
-      ),
-    );
-  }
-
-  Widget _buildAnalyticsFeatures() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Show API error message if any
-        if (_apiErrorMessage != null)
-          _buildApiErrorMessage(),
-        
-        // Section Header
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.analytics, color: Colors.white, size: 28),
-              const SizedBox(width: 12),
-              const Text(
-                'Water Analytics & Insights',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+          );
+        }
         
-        const SizedBox(height: 20),
-        
-        // Traffic Signal Status
-        _buildTrafficSignalCard(),
-        
-        const SizedBox(height: 16),
-        
-        // Depth Analytics Row
-        Row(
-          children: [
-            Expanded(child: _buildAverageDepthCard()),
-            const SizedBox(width: 12),
-            Expanded(child: _buildMinMaxDepthCard()),
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Yearly Change Row
-        Row(
-          children: [
-            Expanded(child: _buildYearlyChangeCard()),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDayForecastCard()),
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Prediction Chart Row
-        _buildPredictionChartRow(),
-      ],
-    );
-  }
-
-  /// Build Traffic Signal Card
-  Widget _buildTrafficSignalCard() {
-    return Card(
-      elevation: 6,
-      color: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.traffic,
-                    color: Colors.orange,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Regional Water Status',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Traffic Signal Display
-            Center(
+        if (error != null) {
+          return Card(
+            elevation: 6,
+            color: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _buildTrafficLight(),
-                  const SizedBox(height: 12),
+                  Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
                   Text(
-                    _getTrafficSignalStatus(),
-                    style: TextStyle(
-                      fontSize: 18,
+                    'Error Loading Traffic Signals',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: _getTrafficSignalColor(),
+                      color: Colors.red,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _getTrafficSignalDescription(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                    ),
+                    error,
+                    style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.read(refreshTrafficSignalsProvider)(),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
                   ),
                 ],
               ),
             ),
-          ],
+          );
+        }
+        
+        return TrafficSignalWidget(
+          showDetails: true,
+          showRecommendations: false,
+          onTap: () => _showTrafficSignalDetails(context),
+        );
+      },
+    );
+  }
+
+  /// Build Real-time Line Chart
+  Widget _buildRealtimeLineChart() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final selectedLocation = ref.watch(selectedLocationProvider);
+        
+        return RealtimeLineChart(
+          selectedLocation: selectedLocation,
+          chartTitle: 'Real-time Groundwater Trends',
+          showPredictions: true,
+          showForecasts: true,
+          showHistorical: true,
+          timeRange: '30 Days',
+        );
+      },
+    );
+  }
+
+  /// Show Traffic Signal Details Dialog
+  void _showTrafficSignalDetails(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Regional Traffic Signal Details'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Consumer(
+            builder: (context, ref, child) {
+              final criticalRegionsAsync = ref.watch(criticalRegionsProvider);
+              final monitoringRegionsAsync = ref.watch(regionsRequiringMonitoringProvider);
+              
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Overall Status
+                  TrafficSignalWidget(
+                    showDetails: true,
+                    showRecommendations: false,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Critical Regions
+                  if (criticalRegionsAsync.hasValue && criticalRegionsAsync.value!.isNotEmpty) ...[
+                    Text(
+                      'Critical Regions (${criticalRegionsAsync.value!.length})',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...criticalRegionsAsync.value!.take(3).map((signal) => 
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: signal.level.color,
+                          child: Text(
+                            signal.level.status.substring(0, 1),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(signal.regionName),
+                        subtitle: Text('${signal.formattedDepth} • ${signal.district}'),
+                        trailing: Text(
+                          '${(signal.riskScore * 100).toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: signal.level.color,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (criticalRegionsAsync.value!.length > 3)
+                      Text(
+                        '... and ${criticalRegionsAsync.value!.length - 3} more',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Monitoring Regions
+                  if (monitoringRegionsAsync.hasValue && monitoringRegionsAsync.value!.isNotEmpty) ...[
+                    Text(
+                      'Regions Requiring Monitoring (${monitoringRegionsAsync.value!.length})',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...monitoringRegionsAsync.value!.take(3).map((signal) => 
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: signal.level.color,
+                          child: Text(
+                            signal.level.status.substring(0, 1),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(signal.regionName),
+                        subtitle: Text('${signal.formattedDepth} • ${signal.district}'),
+                        trailing: Text(
+                          '${(signal.riskScore * 100).toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: signal.level.color,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (monitoringRegionsAsync.value!.length > 3)
+                      Text(
+                        '... and ${monitoringRegionsAsync.value!.length - 3} more',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ],
+              );
+            },
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.push('/traffic-signals');
+            },
+            child: const Text('View All'),
+          ),
+        ],
       ),
     );
   }
@@ -2815,81 +2987,6 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     return [];
   }
 
-  String _getTrafficSignalLevel() {
-    final random = DateTime.now().millisecond % 3;
-    switch (random) {
-      case 0: return 'good';
-      case 1: return 'warning';
-      case 2: return 'critical';
-      default: return 'good';
-    }
-  }
-
-  String _getTrafficSignalStatus() {
-    switch (_getTrafficSignalLevel()) {
-      case 'good': return 'GOOD';
-      case 'warning': return 'CAUTION';
-      case 'critical': return 'CRITICAL';
-      default: return 'GOOD';
-    }
-  }
-
-  Color _getTrafficSignalColor() {
-    switch (_getTrafficSignalLevel()) {
-      case 'good': return const Color(0xFF6A1B9A);
-      case 'warning': return Colors.orange;
-      case 'critical': return Colors.red;
-      default: return const Color(0xFF6A1B9A);
-    }
-  }
-
-  String _getTrafficSignalDescription() {
-    switch (_getTrafficSignalLevel()) {
-      case 'good': return 'Water levels are healthy and sustainable';
-      case 'warning': return 'Water levels are declining, monitor closely';
-      case 'critical': return 'Water levels critically low, immediate action needed';
-      default: return 'Water levels are healthy and sustainable';
-    }
-  }
-
-  Widget _buildTrafficLight() {
-    final status = _getTrafficSignalLevel();
-    return Container(
-      width: 80,
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.grey[600]!, width: 3),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildTrafficLightBulb(Colors.red, status == 'critical'),
-          _buildTrafficLightBulb(Colors.orange, status == 'warning'),
-          _buildTrafficLightBulb(const Color(0xFF6A1B9A), status == 'good'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrafficLightBulb(Color color, bool isActive) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: isActive ? color : Colors.grey[400],
-        shape: BoxShape.circle,
-        boxShadow: isActive ? [
-          BoxShadow(
-            color: color.withOpacity(0.5),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ] : null,
-      ),
-    );
-  }
 
   Color _getForecastTrendColor() {
     final forecast = _getMockMonthlyForecast();

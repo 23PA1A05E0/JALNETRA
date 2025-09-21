@@ -1233,14 +1233,19 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   String _getTrafficSignalLevel() {
-    // This will be updated to use real API data
-    // For now, we'll use mock logic but it can be easily replaced with real data
-    final random = DateTime.now().millisecond % 3;
-    switch (random) {
-      case 0: return 'good';
-      case 1: return 'warning';
-      case 2: return 'critical';
-      default: return 'good';
+    // Use API data to determine traffic signal level
+    final analyticsData = _getAnalyticsData();
+    final avgDepth = analyticsData['averageDepth'] as double? ?? 0.0;
+    
+    // Convert to positive value for easier comparison
+    final depthValue = avgDepth.abs();
+    
+    if (depthValue >= 0 && depthValue <= 5) {
+      return 'good'; // Green: 0 to -5 meters
+    } else if (depthValue >= 6 && depthValue <= 16) {
+      return 'warning'; // Orange: -6 to -16 meters
+    } else {
+      return 'critical'; // Red: beyond -16 meters
     }
   }
 
