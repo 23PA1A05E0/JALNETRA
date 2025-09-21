@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/policy_maker_provider.dart';
 
 /// Policy Makers Dashboard - Clean minimal version
 class PolicyMakersDashboard extends ConsumerStatefulWidget {
@@ -374,15 +375,15 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                 setState(() {
                   selectedRegion = value;
                   selectedZoneType = null;
-                  showZoneDetails = value != null && dangerZones.containsKey(value);
+                  showZoneDetails = value == 'Andhra Pradesh'; // Only show details for Andhra Pradesh (our API data)
                 });
               },
             ),
             
             const SizedBox(height: 16),
 
-            // Zone Type Selection (if region with danger zone data is selected)
-            if (selectedRegion != null && dangerZones.containsKey(selectedRegion))
+            // Zone Type Selection (if Andhra Pradesh is selected)
+            if (selectedRegion == 'Andhra Pradesh')
               _buildDropdown(
                 label: 'Zone Type',
                 value: selectedZoneType,
@@ -394,8 +395,8 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                 },
               ),
             
-            // Message for regions without danger zone data
-            if (selectedRegion != null && !dangerZones.containsKey(selectedRegion))
+            // Message for regions without API data
+            if (selectedRegion != null && selectedRegion != 'Andhra Pradesh')
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -417,7 +418,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Danger zone data not available for $selectedRegion. Please select a region with available data.',
+                        'API data not available for $selectedRegion. Please select Andhra Pradesh to view real-time groundwater zone analysis.',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.orange[700],
@@ -435,26 +436,66 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
 
   /// Build zone details section
   Widget _buildZoneDetailsSection() {
-    final regionData = dangerZones[selectedRegion!]!;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return Consumer(
+      builder: (context, ref, child) {
+        final categorizedZones = ref.watch(PolicyMakerProvider.categorizedZonesProvider);
+        
+        if (categorizedZones.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.orange.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.orange[700],
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Loading zone data from API...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final regionData = categorizedZones['Andhra Pradesh']!;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
         // Zone Statistics Cards
         _buildZoneStatisticsCards(regionData),
         const SizedBox(height: 20),
         
-        // Dynamic Zone Containers
-        _buildDynamicZoneContainers(regionData),
+        // Village Summary
+        _buildVillageSummary(regionData),
         const SizedBox(height: 20),
-        
-        // Researcher Notes
-        _buildResearcherNotes(regionData['notes']),
-        const SizedBox(height: 20),
-        
-        // Detailed Zone Information
-        _buildDetailedZoneInfo(),
-      ],
+            
+            // Dynamic Zone Containers
+            _buildDynamicZoneContainers(regionData),
+            const SizedBox(height: 20),
+            
+            // Detailed Zone Information
+            _buildDetailedZoneInfo(),
+          ],
+        );
+      },
     );
   }
 
@@ -464,7 +505,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
             Text(
-          'Zone Statistics - $selectedRegion',
+          'Zone Statistics - Andhra Pradesh',
           style: TextStyle(
             fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -523,6 +564,96 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
     );
   }
 
+  /// Build village summary section
+  Widget _buildVillageSummary(Map<String, dynamic> regionData) {
+    final redZones = regionData['redZones'] as List<String>;
+    final orangeZones = regionData['orangeZones'] as List<String>;
+    final greenZones = regionData['greenZones'] as List<String>;
+    
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Village Analysis Summary (${redZones.length + orangeZones.length + greenZones.length} Total Villages)',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Green Zones Summary
+            if (greenZones.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Green Zones (${greenZones.length}): ',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green[700]),
+                  ),
+                  Expanded(
+                    child: Text(
+                      greenZones.join(', '),
+                      style: TextStyle(color: Colors.green[600]),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            
+            // Orange Zones Summary
+            if (orangeZones.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Orange Zones (${orangeZones.length}): ',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange[700]),
+                  ),
+                  Expanded(
+                    child: Text(
+                      orangeZones.join(', '),
+                      style: TextStyle(color: Colors.orange[600]),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            
+            // Red Zones Summary
+            if (redZones.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.red, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Red Zones (${redZones.length}): ',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red[700]),
+                  ),
+                  Expanded(
+                    child: Text(
+                      redZones.join(', '),
+                      style: TextStyle(color: Colors.red[600]),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Build dynamic zone containers
   Widget _buildDynamicZoneContainers(Map<String, dynamic> regionData) {
     List<String> zonesToShow = [];
@@ -557,6 +688,9 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
       zoneColor = Colors.green;
       zoneIcon = Icons.check_circle;
     }
+
+    print('🔍 DEBUG: Policy Maker - Showing ${zonesToShow.length} zones: $zonesToShow');
+    print('🔍 DEBUG: Policy Maker - Zone type: $selectedZoneType, Title: $zoneTypeTitle');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,88 +827,120 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
   void _showZoneDetails(String zoneName, Color zoneColor) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: zoneColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                zoneColor == Colors.red ? Icons.warning :
-                zoneColor == Colors.orange ? Icons.warning_amber :
-                zoneColor == Colors.green ? Icons.check_circle : Icons.location_on,
-                color: zoneColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                zoneName,
-                style: TextStyle(
-                  color: zoneColor,
-                  fontWeight: FontWeight.bold,
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final zoneDetails = ref.watch(PolicyMakerProvider.zoneDetailsProvider(zoneName));
+          
+          if (zoneDetails == null) {
+            return AlertDialog(
+              title: Text(zoneName),
+              content: const Text('Loading zone details...'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
                 ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Zone Information',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildZoneInfoItem('Region', selectedRegion!),
-            _buildZoneInfoItem('Zone Type', 
-              zoneColor == Colors.red ? 'Critical (Red Zone)' :
-              zoneColor == Colors.orange ? 'Moderate (Orange Zone)' :
-              zoneColor == Colors.green ? 'Safe (Green Zone)' : 'Unknown'
-            ),
-            _buildZoneInfoItem('Status', 
-              zoneColor == Colors.red ? 'Immediate intervention required' :
-              zoneColor == Colors.orange ? 'Monitoring and preventive measures needed' :
-              zoneColor == Colors.green ? 'Continue current management practices' : 'Unknown'
-            ),
-            _buildZoneInfoItem('Priority', 
-              zoneColor == Colors.red ? 'High Priority' :
-              zoneColor == Colors.orange ? 'Medium Priority' :
-              zoneColor == Colors.green ? 'Low Priority' : 'Unknown'
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Zone $zoneName selected for detailed analysis'),
-                  backgroundColor: zoneColor,
+              ],
+            );
+          }
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: zoneDetails['zoneColor'].withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    zoneDetails['zoneColor'] == Colors.red ? Icons.warning :
+                    zoneDetails['zoneColor'] == Colors.orange ? Icons.warning_amber :
+                    zoneDetails['zoneColor'] == Colors.green ? Icons.check_circle : Icons.location_on,
+                    color: zoneDetails['zoneColor'],
+                    size: 20,
+                  ),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: zoneColor,
-              foregroundColor: Colors.white,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    zoneName,
+                    style: TextStyle(
+                      color: zoneDetails['zoneColor'],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: const Text('Analyze'),
-          ),
-        ],
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Zone Information',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildZoneInfoItem('Station Code', zoneDetails['stationCode']),
+                _buildZoneInfoItem('Average Depth', '${zoneDetails['averageDepth'].toStringAsFixed(2)} m'),
+                _buildZoneInfoItem('Max Depth', '${zoneDetails['maxDepth'].toStringAsFixed(2)} m'),
+                _buildZoneInfoItem('Min Depth', '${zoneDetails['minDepth'].toStringAsFixed(2)} m'),
+                _buildZoneInfoItem('Zone Type', zoneDetails['zoneType']),
+                _buildZoneInfoItem('Status', zoneDetails['status']),
+                _buildZoneInfoItem('Priority', zoneDetails['priority']),
+                const SizedBox(height: 8),
+                Text(
+                  'Yearly Change:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ...zoneDetails['yearlyChange'].entries.map<Widget>((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 2),
+                    child: Text(
+                      '${entry.key}: ${entry.value.toStringAsFixed(2)} m',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Zone $zoneName selected for detailed analysis'),
+                      backgroundColor: zoneDetails['zoneColor'],
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: zoneDetails['zoneColor'],
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Analyze'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -875,66 +1041,6 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Build researcher notes section
-  Widget _buildResearcherNotes(String notes) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.blue.withOpacity(0.1),
-            Colors.blue.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.blue.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.science,
-                  color: Colors.blue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Researcher Notes',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            notes,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[700],
-              height: 1.5,
-            ),
-          ),
-        ],
       ),
     );
   }
