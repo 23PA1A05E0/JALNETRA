@@ -42,8 +42,8 @@ class TrafficSignalColorTest extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _buildColorRule('🟢 GOOD', '0 to -5 meters', 'Healthy and sustainable', const Color(0xFF33B864)),
-            _buildColorRule('🟠 CAUTION', '-6 to -16 meters', 'Declining, monitor closely', Colors.orange),
-            _buildColorRule('🔴 CRITICAL', 'Beyond -16 meters', 'Immediate action needed', Colors.red),
+            _buildColorRule('🟠 CAUTION', '-5 to -15 meters', 'Declining, monitor closely', Colors.orange),
+            _buildColorRule('🔴 CRITICAL', '-15 and above', 'Immediate action needed', Colors.red),
             const SizedBox(height: 24),
             Text(
               'Test Results:',

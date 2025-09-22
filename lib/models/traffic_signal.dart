@@ -95,10 +95,10 @@ class TrafficSignal extends Equatable {
     
     if (depthValue >= 0 && depthValue <= 5) {
       return TrafficSignalLevel.good; // Green: 0 to -5 meters
-    } else if (depthValue >= 6 && depthValue <= 16) {
-      return TrafficSignalLevel.warning; // Orange: -6 to -16 meters
+    } else if (depthValue >= 6 && depthValue <= 15) {
+      return TrafficSignalLevel.warning; // Orange: -5 to -15 meters
     } else {
-      return TrafficSignalLevel.critical; // Red: beyond -16 meters
+      return TrafficSignalLevel.critical; // Red: -15 and above
     }
   }
 

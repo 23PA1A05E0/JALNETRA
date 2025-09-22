@@ -8,7 +8,6 @@ import '../screens/policy_makers_dashboard.dart';
 import '../screens/home_dashboard.dart';
 import '../screens/stations_list_screen.dart';
 import '../screens/station_details_screen.dart';
-import '../screens/map_screen.dart';
 import '../screens/reports_alerts_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/location_search_screen.dart';
@@ -68,11 +67,6 @@ final appRouter = GoRouter(
         final stationId = state.pathParameters['stationId']!;
         return StationDetailsScreen(stationId: stationId);
       },
-    ),
-    GoRoute(
-      path: '/map',
-      name: 'map',
-      builder: (context, state) => const MapScreen(),
     ),
     GoRoute(
       path: '/alerts',

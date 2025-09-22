@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:syncfusion_flutter_charts/charts.dart' as charts;
+import '../themes/dashboard_themes.dart';
 import '../providers/location_search_provider.dart';
 import '../providers/groundwater_data_provider.dart' as groundwater;
 import '../providers/prediction_forecast_provider.dart';
@@ -178,47 +179,30 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Load states from service after ref is available
+    // Move provider modification to after build cycle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
     ref.read(locationSearchProvider.notifier).loadStates();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = DashboardThemes.ResearcherTheme;
+    final brightness = Theme.of(context).brightness;
+    
     return Scaffold(
+      backgroundColor: theme.toThemeData(brightness: brightness).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Researcher Dashboard'),
-        backgroundColor: const Color(0xFF6A1B9A),
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Researcher Dashboard',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.onPrimaryColor,
         elevation: 0,
-        leading: GoRouter.of(context).canPop()
-          ? IconButton(
-              icon: Icon(
-                Theme.of(context).platform == TargetPlatform.iOS
-                  ? Icons.arrow_back_ios
-                  : Icons.arrow_back,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                context.pop();
-              },
-              tooltip: 'Back',
-            )
-          : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.traffic),
-            onPressed: () => context.push('/traffic-signals'),
-            tooltip: 'View Traffic Signals',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.read(refreshTrafficSignalsProvider)();
-              // Refresh other data as well
-              ref.invalidate(groundwater.groundwaterDataProvider);
-            },
-            tooltip: 'Refresh Data',
-          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
@@ -396,15 +380,17 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build welcome section
   Widget _buildWelcomeSection() {
+    final theme = DashboardThemes.ResearcherTheme;
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF6A1B9A).withOpacity(0.7),
-            const Color(0xFF8E24AA).withOpacity(0.6),
-            const Color(0xFFAB47BC).withOpacity(0.5),
+            theme.primaryColor.withOpacity(0.7),
+            theme.secondaryColor.withOpacity(0.6),
+            theme.accentColor.withOpacity(0.5),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -413,7 +399,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6A1B9A).withOpacity(0.15),
+            color: theme.primaryColor.withOpacity(0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
             ),
@@ -478,22 +464,24 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build main options section
   Widget _buildMainOptions() {
+    final theme = DashboardThemes.ResearcherTheme;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF6A1B9A).withOpacity(0.1),
-            const Color(0xFF6A1B9A).withOpacity(0.05),
+            theme.primaryColor.withOpacity(0.1),
+            theme.primaryColor.withOpacity(0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF6A1B9A).withOpacity(0.3),
+          color: theme.primaryColor.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6A1B9A).withOpacity(0.1),
+            color: theme.primaryColor.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
             ),
@@ -511,15 +499,15 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF6A1B9A).withOpacity(0.2),
-                        const Color(0xFF6A1B9A).withOpacity(0.1),
+                        theme.primaryColor.withOpacity(0.2),
+                        theme.primaryColor.withOpacity(0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.analytics,
-                    color: Color(0xFF6A1B9A),
+                    color: theme.primaryColor,
                     size: 28,
                   ),
                 ),
@@ -530,7 +518,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF6A1B9A),
+                      color: theme.primaryColor,
                     ),
               ),
             ),
@@ -571,12 +559,14 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     required VoidCallback onTap,
     required bool isSelected,
   }) {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: isSelected ? 8 : 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isSelected ? const Color(0xFF6A1B9A).withOpacity(0.6) : Colors.transparent,
+          color: isSelected ? theme.primaryColor.withOpacity(0.6) : Colors.transparent,
           width: 2,
         ),
       ),
@@ -590,8 +580,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             gradient: LinearGradient(
               colors: isSelected 
                 ? [
-                    const Color(0xFF6A1B9A).withOpacity(0.03),
-                    const Color(0xFF6A1B9A).withOpacity(0.01),
+                    theme.primaryColor.withOpacity(0.03),
+                    theme.primaryColor.withOpacity(0.01),
                   ]
                 : [
                     Colors.white,
@@ -605,13 +595,13 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected 
-                    ? const Color(0xFF6A1B9A).withOpacity(0.1)
+                    ? theme.primaryColor.withOpacity(0.1)
                     : Colors.grey.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
-                  color: isSelected ? const Color(0xFF6A1B9A) : Colors.grey[600],
+                  color: isSelected ? theme.primaryColor : Colors.grey[600],
                   size: 24,
                 ),
               ),
@@ -625,7 +615,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                       style: TextStyle(
                         fontSize: 18,
             fontWeight: FontWeight.bold,
-                        color: isSelected ? const Color(0xFF6A1B9A) : Colors.grey[800],
+                        color: isSelected ? theme.primaryColor : Colors.grey[800],
                             ),
                           ),
                     const SizedBox(height: 4),
@@ -633,7 +623,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                       description,
                       style: TextStyle(
                         fontSize: 14,
-                        color: isSelected ? const Color(0xFF6A1B9A).withOpacity(0.8) : Colors.grey[600],
+                        color: isSelected ? theme.primaryColor.withOpacity(0.8) : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -641,7 +631,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     ),
               Icon(
                 isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isSelected ? const Color(0xFF6A1B9A) : Colors.grey[400],
+                color: isSelected ? theme.primaryColor : Colors.grey[400],
                 size: 24,
                     ),
                   ],
@@ -697,17 +687,19 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build data download content
   Widget _buildDataDownloadContent() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF6A1B9A).withOpacity(0.05),
-            const Color(0xFF6A1B9A).withOpacity(0.02),
+            theme.primaryColor.withOpacity(0.05),
+            theme.primaryColor.withOpacity(0.02),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF6A1B9A).withOpacity(0.15),
+          color: theme.primaryColor.withOpacity(0.15),
           width: 1.5,
         ),
       ),
@@ -723,8 +715,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF6A1B9A).withOpacity(0.1),
-                        const Color(0xFF6A1B9A).withOpacity(0.05),
+                        theme.primaryColor.withOpacity(0.1),
+                        theme.primaryColor.withOpacity(0.05),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -742,7 +734,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     style: TextStyle(
                       fontSize: 20,
                   fontWeight: FontWeight.bold,
-                      color: const Color(0xFF6A1B9A),
+                      color: theme.primaryColor,
                 ),
               ),
             ),
@@ -796,6 +788,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build location selection for data download
   Widget _buildLocationSelection() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -809,7 +803,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF6A1B9A),
+                color: theme.primaryColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -911,6 +905,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build analytics for selected location
   Widget _buildLocationAnalytics() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -923,7 +919,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               children: [
                 Icon(
                   Icons.analytics,
-                  color: const Color(0xFF6A1B9A),
+                  color: theme.primaryColor,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
@@ -932,7 +928,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                  color: const Color(0xFF6A1B9A),
+                  color: theme.primaryColor,
                   ),
                 ),
               ],
@@ -965,6 +961,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build download button for selected location
   Widget _buildDownloadButton() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -974,7 +972,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF6A1B9A).withOpacity(0.7),
+              theme.primaryColor.withOpacity(0.7),
               const Color(0xFF8E24AA).withOpacity(0.6),
             ],
           ),
@@ -1028,6 +1026,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Download data for selected location
   void _downloadData(String format) {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1038,7 +1038,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
             Icon(
               Icons.download,
               size: 48,
-              color: const Color(0xFF6A1B9A),
+              color: theme.primaryColor,
             ),
             const SizedBox(height: 16),
             Text(
@@ -1100,6 +1100,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Show download dialog
   void _showDownloadDialog(String dataType) {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1116,12 +1118,12 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('$dataType download started'),
-                  backgroundColor: const Color(0xFF6A1B9A),
+                  backgroundColor: theme.primaryColor,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6A1B9A),
+              backgroundColor: theme.primaryColor,
             ),
             child: const Text('Download CSV'),
           ),
@@ -1131,12 +1133,12 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('$dataType download started'),
-                  backgroundColor: const Color(0xFF6A1B9A),
+                  backgroundColor: theme.primaryColor,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6A1B9A),
+              backgroundColor: theme.primaryColor,
             ),
             child: const Text('Download JSON'),
           ),
@@ -1147,12 +1149,13 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Location selection section (same as citizen dashboard)
   Widget _buildLocationSelectionSection() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDarkMode 
+          colors: isDark 
             ? [
                 const Color(0xFF1a1a1a).withOpacity(0.9),
                 const Color(0xFF2a2a2a).withOpacity(0.8),
@@ -1169,21 +1172,21 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDarkMode 
-            ? const Color(0xFF6A1B9A).withOpacity(0.3)
-            : const Color(0xFF6A1B9A).withOpacity(0.15), // Softer border
+          color: isDark 
+            ? theme.primaryColor.withOpacity(0.3)
+            : theme.primaryColor.withOpacity(0.15), // Softer border
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-              ? const Color(0xFF6A1B9A).withOpacity(0.1)
-              : const Color(0xFF6A1B9A).withOpacity(0.08), // Very subtle shadow
+            color: isDark 
+              ? theme.primaryColor.withOpacity(0.1)
+              : theme.primaryColor.withOpacity(0.08), // Very subtle shadow
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: isDarkMode 
+            color: isDark 
               ? Colors.black.withOpacity(0.3)
               : Colors.grey.withOpacity(0.05), // Very light shadow
             blurRadius: 10,
@@ -1202,14 +1205,14 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDarkMode 
+                      colors: isDark
                         ? [
-                            const Color(0xFF6A1B9A).withOpacity(0.2),
-                            const Color(0xFF6A1B9A).withOpacity(0.1),
+                            theme.primaryColor.withOpacity(0.2),
+                            theme.primaryColor.withOpacity(0.1),
                           ]
                         : [
-                            const Color(0xFF6A1B9A).withOpacity(0.1), // Softer purple
-                            const Color(0xFF6A1B9A).withOpacity(0.05), // Very light purple
+                            theme.primaryColor.withOpacity(0.1), // Softer theme color
+                            theme.primaryColor.withOpacity(0.05), // Very light theme color
                           ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1217,9 +1220,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode 
-                          ? const Color(0xFF6A1B9A).withOpacity(0.2)
-                          : const Color(0xFF6A1B9A).withOpacity(0.1), // Softer shadow
+                        color: isDark
+                          ? theme.primaryColor.withOpacity(0.2)
+                          : theme.primaryColor.withOpacity(0.1), // Softer shadow
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -1227,7 +1230,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   ),
                   child: Icon(
                     Icons.location_on,
-                    color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A), // Purple
+                    color: theme.primaryColor,
                     size: 28,
                   ),
                 ),
@@ -1237,7 +1240,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     'Select Your Location',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                      color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A), // Purple for better contrast
+                      color: theme.primaryColor,
                       fontSize: 22,
                       letterSpacing: 0.5,
               ),
@@ -1268,9 +1271,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            isDarkMode 
-                              ? const Color(0xFF6A1B9A).withOpacity(0.3)
-                              : const Color(0xFF6A1B9A).withOpacity(0.3),
+                            isDark 
+                              ? theme.primaryColor.withOpacity(0.3)
+                              : theme.primaryColor.withOpacity(0.3),
                             Colors.transparent,
                           ],
                         ),
@@ -1282,32 +1285,32 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: isDarkMode 
+                        colors: isDark 
                           ? [
-                              const Color(0xFF6A1B9A).withOpacity(0.1),
-                              const Color(0xFF6A1B9A).withOpacity(0.05),
+                              theme.primaryColor.withOpacity(0.1),
+                              theme.primaryColor.withOpacity(0.05),
                             ]
                           : [
-                              const Color(0xFF6A1B9A).withOpacity(0.1),
-                              const Color(0xFF6A1B9A).withOpacity(0.05),
+                              theme.primaryColor.withOpacity(0.1),
+                              theme.primaryColor.withOpacity(0.05),
                             ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isDarkMode 
-                          ? const Color(0xFF6A1B9A).withOpacity(0.3)
-                          : const Color(0xFF6A1B9A).withOpacity(0.3),
+                        color: isDark 
+                          ? theme.primaryColor.withOpacity(0.3)
+                          : theme.primaryColor.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
               child: Text(
                       'OR',
                       style: TextStyle(
-                        color: isDarkMode 
-                          ? const Color(0xFF6A1B9A)
-                          : const Color(0xFF6A1B9A),
+                        color: isDark 
+                          ? theme.primaryColor
+                          : theme.primaryColor,
                   fontWeight: FontWeight.bold,
                         fontSize: 14,
                         letterSpacing: 1.0,
@@ -1321,9 +1324,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            isDarkMode 
-                              ? const Color(0xFF6A1B9A).withOpacity(0.3)
-                              : const Color(0xFF6A1B9A).withOpacity(0.3),
+                            isDark 
+                              ? theme.primaryColor.withOpacity(0.3)
+                              : theme.primaryColor.withOpacity(0.3),
                             Colors.transparent,
                           ],
                         ),
@@ -1345,7 +1348,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   Widget _buildDropdown(String label, String? value, List<String> items, Function(String?) onChanged) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1355,7 +1359,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF6A1B9A),
+            color: theme.primaryColor,
           ),
         ),
         const SizedBox(height: 6),
@@ -1363,7 +1367,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           height: 45, // Fixed smaller height
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: isDarkMode 
+              colors: isDark 
                 ? [
                     const Color(0xFF2a2a2a),
                     const Color(0xFF1a1a1a),
@@ -1376,17 +1380,17 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               end: Alignment.bottomRight,
             ),
             border: Border.all(
-              color: isDarkMode 
-                ? const Color(0xFF6A1B9A).withOpacity(0.4)
-                : const Color(0xFF6A1B9A).withOpacity(0.2), // Softer border
+              color: isDark 
+                ? theme.primaryColor.withOpacity(0.4)
+                : theme.primaryColor.withOpacity(0.2), // Softer border
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(10), // Smaller border radius
             boxShadow: [
               BoxShadow(
-                color: isDarkMode 
-                  ? const Color(0xFF6A1B9A).withOpacity(0.1)
-                  : const Color(0xFF6A1B9A).withOpacity(0.05), // Very subtle shadow
+                color: isDark 
+                  ? theme.primaryColor.withOpacity(0.1)
+                  : theme.primaryColor.withOpacity(0.05), // Very subtle shadow
                 blurRadius: 6, // Smaller blur radius
                 offset: const Offset(0, 2),
               ),
@@ -1400,25 +1404,25 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                 child: Text(
                   'Select $label',
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : const Color(0xFF666666), // Softer gray
+                    color: isDark ? Colors.white70 : const Color(0xFF666666), // Softer gray
                     fontSize: 14, // Smaller font size
                   ),
                 ),
               ),
               isExpanded: true,
               style: TextStyle(
-                color: isDarkMode ? Colors.white : const Color(0xFF333333), // Darker text for better contrast
+                color: isDark ? Colors.white : const Color(0xFF333333), // Darker text for better contrast
                 fontSize: 14, // Smaller font size
                 fontWeight: FontWeight.w500,
               ),
-              dropdownColor: isDarkMode 
+              dropdownColor: isDark 
                 ? const Color(0xFF2a2a2a)
                 : const Color(0xFFFAFAFA), // Light background
               icon: Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Icon(
                   Icons.keyboard_arrow_down,
-                  color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A), // Purple
+                  color: theme.primaryColor,
                   size: 20, // Smaller icon size
                 ),
               ),
@@ -1431,7 +1435,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     child: Text(
                       item,
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white : const Color(0xFF333333),
+                        color: isDark ? Colors.white : const Color(0xFF333333),
                         fontSize: 13, // Smaller font size for dropdown items
                         fontWeight: FontWeight.w500,
                       ),
@@ -1448,6 +1452,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   Widget _buildAnalyticsButton() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: ElevatedButton(
         onPressed: () async {
@@ -1462,7 +1468,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           setState(() => showAnalytics = !showAnalytics);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6A1B9A),
+          backgroundColor: theme.primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -1502,6 +1508,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   Widget _buildAnalyticsFeatures() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1515,7 +1523,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
+              colors: [theme.primaryColor, const Color(0xFF8E24AA)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1568,12 +1576,16 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         
         // Prediction Chart Row
         _buildPredictionChartRow(),
+        const SizedBox(height: 16),
       ],
     );
   }
 
+
   /// Build Individual Location Traffic Signal Card (like citizen dashboard)
   Widget _buildLocationTrafficSignalCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 6,
       color: Theme.of(context).cardColor,
@@ -1680,11 +1692,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     // For groundwater depth, negative values are normal (below ground level)
     // More negative = deeper = worse condition
     if (avgDepth >= -5.0) {
-      return 'good'; // Green: 0 to -5 meters (shallow)
-    } else if (avgDepth < -5.0 && avgDepth >= -16.0) {
-      return 'warning'; // Orange: -5.1 to -16 meters (moderate)
+      return 'good'; // Green: 0 to -5 meters (safe)
+    } else if (avgDepth < -5.0 && avgDepth >= -15.0) {
+      return 'warning'; // Orange: -5 to -15 meters (moderate)
     } else {
-      return 'critical'; // Red: beyond -16 meters (deep/critical)
+      return 'critical'; // Red: -15 and above (danger)
     }
   }
 
@@ -1716,6 +1728,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   Widget _buildTrafficLight() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = _getTrafficSignalLevel();
     return Container(
       width: 80,
@@ -1756,6 +1770,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Regional Traffic Signal Card
   Widget _buildRegionalTrafficSignalCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Consumer(
       builder: (context, ref, child) {
         final isLoading = ref.watch(trafficSignalLoadingProvider);
@@ -1822,6 +1838,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Traffic Signal Analytics
   Widget _buildTrafficSignalAnalytics() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Consumer(
       builder: (context, ref, child) {
         final statisticsAsync = ref.watch(trafficSignalStatisticsProvider);
@@ -2091,6 +2109,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Average Depth Card
   Widget _buildAverageDepthCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 4,
       color: Theme.of(context).cardColor,
@@ -2180,6 +2200,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Min Max Depth Card
   Widget _buildMinMaxDepthCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 4,
       color: Theme.of(context).cardColor,
@@ -2303,36 +2325,37 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Detect location button
   Widget _buildDetectLocationButton() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDarkMode 
+          colors: isDark 
             ? [
-                const Color(0xFF6A1B9A).withOpacity(0.1),
-                const Color(0xFF6A1B9A).withOpacity(0.05),
+                theme.primaryColor.withOpacity(0.1),
+                theme.primaryColor.withOpacity(0.05),
               ]
             : [
-                const Color(0xFF6A1B9A).withOpacity(0.1),
-                const Color(0xFF6A1B9A).withOpacity(0.05),
+                theme.primaryColor.withOpacity(0.1),
+                theme.primaryColor.withOpacity(0.05),
               ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDarkMode 
-            ? const Color(0xFF6A1B9A).withOpacity(0.3)
-            : const Color(0xFF6A1B9A).withOpacity(0.3),
+          color: isDark 
+            ? theme.primaryColor.withOpacity(0.3)
+            : theme.primaryColor.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-              ? const Color(0xFF6A1B9A).withOpacity(0.1)
-              : const Color(0xFF6A1B9A).withOpacity(0.1),
+            color: isDark 
+              ? theme.primaryColor.withOpacity(0.1)
+              : theme.primaryColor.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -2351,14 +2374,14 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDarkMode 
+                      colors: isDark 
                         ? [
-                            const Color(0xFF6A1B9A).withOpacity(0.2),
-                            const Color(0xFF6A1B9A).withOpacity(0.1),
+                            theme.primaryColor.withOpacity(0.2),
+                            theme.primaryColor.withOpacity(0.1),
                           ]
                         : [
-                            const Color(0xFF6A1B9A).withOpacity(0.2),
-                            const Color(0xFF6A1B9A).withOpacity(0.1),
+                            theme.primaryColor.withOpacity(0.2),
+                            theme.primaryColor.withOpacity(0.1),
                           ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -2366,9 +2389,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode 
-                          ? const Color(0xFF6A1B9A).withOpacity(0.2)
-                          : const Color(0xFF6A1B9A).withOpacity(0.2),
+                        color: isDark 
+                          ? theme.primaryColor.withOpacity(0.2)
+                          : theme.primaryColor.withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
             ),
@@ -2376,7 +2399,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         ),
                   child: Icon(
                     Icons.my_location,
-                    color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A),
+                    color: isDark ? theme.primaryColor : theme.primaryColor,
                     size: 28,
                   ),
                 ),
@@ -2389,7 +2412,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                         'Detect My Location',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A),
+                          color: isDark ? theme.primaryColor : theme.primaryColor,
                           fontSize: 18,
                           letterSpacing: 0.5,
                         ),
@@ -2399,7 +2422,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                         'Automatically detect your current location',
                         style: TextStyle(
                           fontSize: 14,
-                          color: isDarkMode 
+                          color: isDark 
                             ? Colors.white.withOpacity(0.7)
                             : Colors.grey[600],
                           height: 1.3,
@@ -2410,7 +2433,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                 ),
                 Icon(
                   Icons.arrow_forward_ios,
-                  color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A),
+                  color: isDark ? theme.primaryColor : theme.primaryColor,
                   size: 20,
                 ),
               ],
@@ -2423,36 +2446,37 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Detected details card
   Widget _buildDetectedDetailsCard() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDarkMode 
+          colors: isDark 
             ? [
-                const Color(0xFF6A1B9A).withOpacity(0.1),
-                const Color(0xFF6A1B9A).withOpacity(0.05),
+                theme.primaryColor.withOpacity(0.1),
+                theme.primaryColor.withOpacity(0.05),
               ]
             : [
-                const Color(0xFF6A1B9A).withOpacity(0.1),
-                const Color(0xFF6A1B9A).withOpacity(0.05),
+                theme.primaryColor.withOpacity(0.1),
+                theme.primaryColor.withOpacity(0.05),
               ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDarkMode 
-            ? const Color(0xFF6A1B9A).withOpacity(0.3)
-            : const Color(0xFF6A1B9A).withOpacity(0.3),
+          color: isDark 
+            ? theme.primaryColor.withOpacity(0.3)
+            : theme.primaryColor.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-              ? const Color(0xFF6A1B9A).withOpacity(0.1)
-              : const Color(0xFF6A1B9A).withOpacity(0.1),
+            color: isDark 
+              ? theme.primaryColor.withOpacity(0.1)
+              : theme.primaryColor.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -2469,14 +2493,14 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDarkMode 
+                      colors: isDark 
                         ? [
-                            const Color(0xFF6A1B9A).withOpacity(0.2),
-                            const Color(0xFF6A1B9A).withOpacity(0.1),
+                            theme.primaryColor.withOpacity(0.2),
+                            theme.primaryColor.withOpacity(0.1),
                           ]
                         : [
-                            const Color(0xFF6A1B9A).withOpacity(0.2),
-                            const Color(0xFF6A1B9A).withOpacity(0.1),
+                            theme.primaryColor.withOpacity(0.2),
+                            theme.primaryColor.withOpacity(0.1),
                           ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -2485,7 +2509,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   ),
                   child: Icon(
                     Icons.check_circle,
-                    color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A),
+                    color: isDark ? theme.primaryColor : theme.primaryColor,
                     size: 20,
                   ),
                 ),
@@ -2495,7 +2519,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                     'Location Detected',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? const Color(0xFF6A1B9A) : const Color(0xFF6A1B9A),
+                      color: isDark ? theme.primaryColor : theme.primaryColor,
                       fontSize: 16,
                     ),
                   ),
@@ -2520,7 +2544,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Detail row helper
   Widget _buildDetailRow(String label, String value) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -2534,9 +2559,9 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isDarkMode 
-                  ? const Color(0xFF6A1B9A)
-                  : const Color(0xFF6A1B9A),
+                color: isDark 
+                  ? theme.primaryColor
+                  : theme.primaryColor,
               ),
             ),
           ),
@@ -2545,7 +2570,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               value,
               style: TextStyle(
                 fontSize: 14,
-                color: isDarkMode 
+                color: isDark 
                   ? Colors.white.withOpacity(0.8)
                   : Colors.grey[700],
               ),
@@ -2611,6 +2636,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Detect location method
   Future<void> _detectLocation() async {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     try {
       // Check location permission
       LocationPermission permission = await Geolocator.checkPermission();
@@ -2681,6 +2708,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Show location permission dialog
   void _showLocationPermissionDialog() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -2699,7 +2728,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               Geolocator.openAppSettings();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6A1B9A),
+              backgroundColor: theme.primaryColor,
             ),
             child: const Text('Open Settings'),
           ),
@@ -2710,6 +2739,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   // Show location service dialog
   void _showLocationServiceDialog() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -2728,7 +2759,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
               Geolocator.openLocationSettings();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6A1B9A),
+              backgroundColor: theme.primaryColor,
             ),
             child: const Text('Open Settings'),
           ),
@@ -2739,6 +2770,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Yearly Change Card
   Widget _buildYearlyChangeCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Consumer(
       builder: (context, ref, child) {
         final availableLocations = ref.watch(groundwater.availableLocationsProvider);
@@ -2748,65 +2781,65 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
         return stationData.when(
           data: (data) {
             final yearlyChange = _extractYearlyChangeFromAPI(data);
-            final isPositive = yearlyChange > 0;
-            return Card(
-              elevation: 4,
-              color: Theme.of(context).cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isPositive 
-                              ? Colors.red.withOpacity(0.2)
-                              : const Color(0xFF6A1B9A).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            isPositive ? Icons.trending_up : Icons.trending_down,
-                            color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Yearly Change',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: isPositive ? Colors.red[700] : const Color(0xFF6A1B9A),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '${isPositive ? '+' : ''}${yearlyChange.toStringAsFixed(1)} m',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isPositive ? Colors.red[600] : const Color(0xFF6A1B9A),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isPositive ? 'Water level declining' : 'Water level improving',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+    final isPositive = yearlyChange > 0;
+    return Card(
+      elevation: 4,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isPositive 
+                      ? Colors.red.withOpacity(0.2)
+                              : theme.primaryColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    isPositive ? Icons.trending_up : Icons.trending_down,
+                            color: isPositive ? Colors.red[600] : theme.primaryColor,
+                    size: 20,
+                  ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Yearly Change',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                              color: isPositive ? Colors.red[700] : theme.primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${isPositive ? '+' : ''}${yearlyChange.toStringAsFixed(1)} m',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                        color: isPositive ? Colors.red[600] : theme.primaryColor,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+                      isPositive ? 'Water level declining' : 'Water level improving',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
             );
           },
           loading: () => Card(
@@ -2940,6 +2973,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Monthly Forecast Card
   Widget _buildMonthlyForecastCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final forecast = _getMockMonthlyForecast();
     return Card(
       elevation: 4,
@@ -3010,6 +3045,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Day Forecast Card
   Widget _buildDayForecastCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final forecast = _getMockDayForecast();
     return Card(
       elevation: 4,
@@ -3080,6 +3117,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Alerts and Notifications Card
   Widget _buildAlertsNotificationsCard() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final alerts = _getMockAlerts();
     return Card(
       elevation: 4,
@@ -3119,10 +3158,10 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6A1B9A).withOpacity(0.1),
+                  color: theme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF6A1B9A).withOpacity(0.3),
+                    color: theme.primaryColor.withOpacity(0.3),
                     width: 1,
                   ),
                 ),
@@ -3130,7 +3169,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                   children: [
                     Icon(
                       Icons.check_circle,
-                      color: const Color(0xFF6A1B9A),
+                      color: theme.primaryColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -3139,7 +3178,7 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF6A1B9A),
+                        color: theme.primaryColor,
                       ),
                     ),
                   ],
@@ -3189,6 +3228,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Prediction Chart Row
   Widget _buildPredictionChartRow() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Consumer(
       builder: (context, ref, child) {
         return Card(
@@ -3269,6 +3310,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
   /// Build Prediction Chart
   Widget _buildPredictionChart() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Consumer(
       builder: (context, ref, child) {
         final availableLocations = ref.watch(groundwater.availableLocationsProvider);
@@ -3351,6 +3394,8 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
     List<Map<String, dynamic>>? forecastData,
     String period,
   ) {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final chartData = <String, List<ChartDataPoint>>{};
     
     // No historical data - only show forecast data
@@ -3428,9 +3473,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
 
 
   Color _getForecastTrendColor() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final forecast = _getMockMonthlyForecast();
     switch (forecast['trend']) {
-      case 'RISING': return const Color(0xFF6A1B9A);
+      case 'RISING': return theme.primaryColor;
       case 'STABLE': return Colors.orange;
       case 'DECLINING': return Colors.red;
       default: return Colors.grey;
@@ -3438,9 +3485,11 @@ class _ResearcherDashboardState extends ConsumerState<ResearcherDashboard> {
   }
 
   Color _getDayForecastTrendColor() {
+    final theme = DashboardThemes.ResearcherTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final forecast = _getMockDayForecast();
     switch (forecast['trend']) {
-      case 'RISING': return const Color(0xFF6A1B9A);
+      case 'RISING': return theme.primaryColor;
       case 'STABLE': return Colors.orange;
       case 'DECLINING': return Colors.red;
       default: return Colors.grey;

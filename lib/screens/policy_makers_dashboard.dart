@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/policy_maker_provider.dart';
+import '../themes/dashboard_themes.dart';
 
 /// Policy Makers Dashboard - Clean minimal version
 class PolicyMakersDashboard extends ConsumerStatefulWidget {
@@ -163,11 +164,20 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = DashboardThemes.PolicyMakerTheme;
+    final brightness = Theme.of(context).brightness;
+    
     return Scaffold(
+      backgroundColor: theme.toThemeData(brightness: brightness).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Policy Makers Dashboard'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Policy Makers Dashboard',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.onPrimaryColor,
         elevation: 0,
         leading: GoRouter.of(context).canPop()
           ? IconButton(
@@ -215,15 +225,17 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
 
   /// Build welcome section
   Widget _buildWelcomeSection() {
+    final theme = DashboardThemes.PolicyMakerTheme;
+    
     return Container(
               width: double.infinity,
       padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
           colors: [
-            Colors.orange,
-            Colors.orange[700]!,
-            Colors.deepOrange[600]!,
+            theme.primaryColor,
+            theme.primaryVariant,
+            theme.secondaryColor,
           ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -297,22 +309,24 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
 
   /// Build danger zone selection section
   Widget _buildDangerZoneSection() {
+    final theme = DashboardThemes.PolicyMakerTheme;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.orange.withOpacity(0.1),
-            Colors.orange.withOpacity(0.05),
+            theme.primaryColor.withOpacity(0.1),
+            theme.primaryColor.withOpacity(0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.orange.withOpacity(0.2),
+          color: theme.primaryColor.withOpacity(0.2),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
+            color: theme.primaryColor.withOpacity(0.1),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -330,15 +344,15 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.orange.withOpacity(0.2),
-                        Colors.orange.withOpacity(0.1),
+                        theme.primaryColor.withOpacity(0.2),
+                        theme.primaryColor.withOpacity(0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                   Icons.warning_amber,
-                    color: Colors.orange,
+                    color: theme.primaryColor,
                     size: 24,
                   ),
                 ),
@@ -349,7 +363,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                     style: TextStyle(
                       fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.orange[700],
+                color: Colors.white,
               ),
             ),
                 ),
@@ -412,7 +426,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
               children: [
                     Icon(
                       Icons.info_outline,
-                      color: Colors.orange[700],
+                      color: Colors.white,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -421,7 +435,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                         'API data not available for $selectedRegion. Please select Andhra Pradesh to view real-time groundwater zone analysis.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.orange[700],
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -456,7 +470,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
               children: [
                 Icon(
                   Icons.info_outline,
-                  color: Colors.orange[700],
+                  color: Colors.white,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -465,7 +479,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                     'Loading zone data from API...',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.orange[700],
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -479,13 +493,13 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-        // Zone Statistics Cards
-        _buildZoneStatisticsCards(regionData),
-        const SizedBox(height: 20),
-        
-        // Village Summary
-        _buildVillageSummary(regionData),
-        const SizedBox(height: 20),
+            // Zone Statistics Cards
+            _buildZoneStatisticsCards(regionData),
+            const SizedBox(height: 20),
+            
+            // Village Summary
+            _buildVillageSummary(regionData),
+            const SizedBox(height: 20),
             
             // Dynamic Zone Containers
             _buildDynamicZoneContainers(regionData),
@@ -493,11 +507,13 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
             
             // Detailed Zone Information
             _buildDetailedZoneInfo(),
+            const SizedBox(height: 20),
           ],
         );
       },
     );
   }
+
 
   /// Build zone statistics cards
   Widget _buildZoneStatisticsCards(Map<String, dynamic> regionData) {
@@ -509,7 +525,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
           style: TextStyle(
             fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.orange[700],
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 16),
@@ -616,12 +632,12 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                   const SizedBox(width: 8),
                   Text(
                     'Orange Zones (${orangeZones.length}): ',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.orange[700]),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                   Expanded(
                     child: Text(
                       orangeZones.join(', '),
-                      style: TextStyle(color: Colors.orange[600]),
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
@@ -1159,7 +1175,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.orange[700],
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 6),
@@ -1208,7 +1224,7 @@ class _PolicyMakersDashboardState extends ConsumerState<PolicyMakersDashboard> {
                 padding: const EdgeInsets.only(right: 12),
                 child: Icon(
                   Icons.keyboard_arrow_down,
-                  color: Colors.orange[700],
+                  color: Colors.white,
                   size: 20, // Smaller icon size
                 ),
               ),

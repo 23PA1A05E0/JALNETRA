@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/user_provider.dart';
+import '../themes/dashboard_themes.dart';
 
 /// Role selection screen for choosing user type
 class RoleSelectionScreen extends ConsumerStatefulWidget {
@@ -17,7 +18,11 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -29,15 +34,16 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                 'Choose Your Role',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
                 'Select how you\'d like to use JALNETRA',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: isDark ? Colors.white70 : Colors.grey[600],
+                ),
                 textAlign: TextAlign.center,
               ),
 
@@ -46,7 +52,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               // Role Selection Tabs
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: isDark ? const Color(0xFF2D2D2D) : Colors.grey[100],
                   borderRadius: BorderRadius.circular(16),
                 ),
                 padding: const EdgeInsets.all(8),
@@ -57,7 +63,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         context,
                         'Citizen',
                         Icons.person,
-                        Colors.green,
+                        DashboardThemes.CitizenTheme.primaryColor,
                         UserRole.user,
                       ),
                     ),
@@ -66,8 +72,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                       child: _buildRoleTab(
                         context,
                         'Researcher',
-                        Icons.science,
-                        Colors.purple,
+                        Icons.search,
+                        DashboardThemes.ResearcherTheme.primaryColor,
                         UserRole.researcher,
                       ),
                     ),
@@ -77,7 +83,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         context,
                         'Policy Makers',
                         Icons.admin_panel_settings,
-                        Colors.orange,
+                        DashboardThemes.PolicyMakerTheme.primaryColor,
                         UserRole.policyMaker,
                       ),
                     ),
@@ -121,9 +127,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               // Footer note
               Text(
                 'You can change your role anytime in settings',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey[500]),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isDark ? Colors.white60 : Colors.grey[500],
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -181,6 +187,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   }
 
   Widget _buildFeaturesSection(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
     final color = _getRoleColor(_selectedRole);
     final features = _getRoleFeatures(_selectedRole);
     final description = _getRoleDescription(_selectedRole);
@@ -190,9 +198,14 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
       height: 320, // Fixed height to ensure consistency
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: isDark 
+          ? color.withOpacity(0.1) 
+          : color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 2),
+        border: Border.all(
+          color: color.withOpacity(isDark ? 0.3 : 0.2), 
+          width: 2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +215,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withOpacity(isDark ? 0.2 : 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -225,9 +238,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                     ),
                     Text(
                       description,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: isDark ? Colors.white70 : Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -260,7 +273,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                                 feature,
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
-                                      color: Colors.grey[700],
+                                      color: isDark ? Colors.white70 : Colors.grey[700],
                                       height: 1.4,
                                     ),
                               ),
@@ -281,11 +294,11 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   Color _getRoleColor(UserRole role) {
     switch (role) {
       case UserRole.user:
-        return Colors.green;
+        return DashboardThemes.CitizenTheme.primaryColor;
       case UserRole.researcher:
-        return Colors.purple;
+        return DashboardThemes.ResearcherTheme.primaryColor;
       case UserRole.policyMaker:
-        return Colors.orange;
+        return DashboardThemes.PolicyMakerTheme.primaryColor;
     }
   }
 
@@ -294,7 +307,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
       case UserRole.user:
         return Icons.person;
       case UserRole.researcher:
-        return Icons.science;
+        return Icons.search;
       case UserRole.policyMaker:
         return Icons.admin_panel_settings;
     }

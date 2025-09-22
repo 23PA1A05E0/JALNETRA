@@ -49,15 +49,15 @@ class PolicyMakerProvider {
         
         // Apply traffic signal logic
         if (depth >= -5.0) {
-          // Green zone: 0 to -5 meters (shallow)
+          // Green zone: 0 to -5 meters (safe)
           greenZones.add(locationName);
           print('🔍 DEBUG: $locationName -> GREEN ZONE');
-        } else if (depth < -5.0 && depth >= -16.0) {
-          // Orange zone: -5.1 to -16 meters (moderate)
+        } else if (depth < -5.0 && depth >= -15.0) {
+          // Orange zone: -5 to -15 meters (moderate)
           orangeZones.add(locationName);
           print('🔍 DEBUG: $locationName -> ORANGE ZONE');
         } else {
-          // Red zone: beyond -16 meters (deep/critical)
+          // Red zone: -15 and above (danger)
           redZones.add(locationName);
           print('🔍 DEBUG: $locationName -> RED ZONE');
         }
@@ -133,7 +133,7 @@ class PolicyMakerProvider {
       status = 'Continue current management practices';
       priority = 'Low Priority';
       zoneColor = Colors.green;
-    } else if (avgDepth < -5.0 && avgDepth >= -16.0) {
+    } else if (avgDepth < -5.0 && avgDepth >= -15.0) {
       zoneType = 'Moderate (Orange Zone)';
       status = 'Monitoring and preventive measures needed';
       priority = 'Medium Priority';

@@ -51,8 +51,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.2.2
 
-  # Maps & Location
-  google_maps_flutter: ^2.6.1
+  # Location services
   geolocator: ^10.1.0
   geocoding: ^2.1.1
 

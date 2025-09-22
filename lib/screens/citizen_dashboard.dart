@@ -8,6 +8,7 @@ import '../providers/location_search_provider.dart';
 import '../providers/groundwater_data_provider.dart' as groundwater;
 import '../providers/prediction_forecast_provider.dart';
 import '../services/api_service.dart';
+import '../themes/dashboard_themes.dart';
 import 'package:logger/logger.dart';
 
 final logger = Logger();
@@ -268,21 +269,29 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Load states from service after ref is available
-    ref.read(locationSearchProvider.notifier).loadStates();
+    // Move provider modification to after build cycle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(locationSearchProvider.notifier).loadStates();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = DashboardThemes.CitizenTheme;
+    final brightness = Theme.of(context).brightness;
+    
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a1a),
+      backgroundColor: theme.toThemeData(brightness: brightness).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Citizen Dashboard',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
         ),
-        backgroundColor: const Color(0xFF33B864).withOpacity(0.4),
-        foregroundColor: Colors.white,
+        ),
+        backgroundColor: theme.primaryColor,
+        foregroundColor: theme.onPrimaryColor,
         elevation: 0,
         automaticallyImplyLeading: true,
         leading: Navigator.of(context).canPop() 
@@ -319,16 +328,16 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: Theme.of(context).brightness == Brightness.dark 
+                  colors: brightness == Brightness.dark
                     ? [
-                        const Color(0xFF33B864).withOpacity(0.4),
-                        const Color(0xFF33B864).withOpacity(0.4),
-                        const Color(0xFF33B864).withOpacity(0.4),
+                        theme.primaryColor.withOpacity(0.3),
+                        theme.secondaryColor.withOpacity(0.2),
+                        theme.primaryColor.withOpacity(0.1),
                       ]
                     : [
-                        const Color(0xFF33B864).withOpacity(0.4), // Softer green
-                        const Color(0xFF33B864).withOpacity(0.4), // Lighter green
-                        const Color(0xFF33B864).withOpacity(0.4), // Even lighter green
+                        theme.primaryColor.withOpacity(0.1),
+                        theme.secondaryColor.withOpacity(0.05),
+                        theme.backgroundColor.withOpacity(0.8),
                       ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -354,9 +363,9 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.waving_hand,
-                          color: Colors.white,
+                          color: theme.onPrimaryColor,
                           size: 28,
                         ),
                       ),
@@ -365,10 +374,10 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Welcome, Citizen',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: theme.onPrimaryColor,
                                 fontSize: 26,
                       fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -378,7 +387,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                   Text(
                     'Select your location to get personalized water insights and analytics',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: theme.onPrimaryColor.withOpacity(0.9),
                       fontSize: 16,
                                 height: 1.4,
                     ),
@@ -429,21 +438,22 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   Widget _buildLocationSelectionSection() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.CitizenTheme;
+    final brightness = Theme.of(context).brightness;
     
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDarkMode 
+          colors: brightness == Brightness.dark
             ? [
-                const Color(0xFF1a1a1a).withOpacity(0.4),
-                const Color(0xFF2a2a2a).withOpacity(0.4),
-                const Color(0xFF1a1a1a).withOpacity(0.4),
+                theme.primaryColor.withOpacity(0.2),
+                theme.primaryColor.withOpacity(0.1),
+                theme.primaryColor.withOpacity(0.2),
               ]
             : [
-                const Color(0xFFFAFAFA).withOpacity(0.4), // Very light gray
-                const Color(0xFFF5F5F5).withOpacity(0.4), // Light gray
-                const Color(0xFFFAFAFA).withOpacity(0.4), // Very light gray
+                theme.surfaceColor.withOpacity(0.8),
+                theme.backgroundColor.withOpacity(0.6),
+                theme.surfaceColor.withOpacity(0.8),
               ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -451,9 +461,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDarkMode 
-            ? const Color(0xFF33B864).withOpacity(0.2)
-            : const Color(0xFF33B864).withOpacity(0.1), // Softer border
+          color: theme.primaryColor.withOpacity(0.2),
           width: 1.5,
         ),
       ),
@@ -468,14 +476,9 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isDarkMode 
-                        ? [
-                            const Color(0xFF33B864).withOpacity(0.4),
-                            const Color(0xFF33B864).withOpacity(0.4),
-                          ]
-                        : [
-                            const Color(0xFF33B864).withOpacity(0.4), // Softer green
-                            const Color(0xFF33B864).withOpacity(0.4), // Very light green
+                      colors: [
+                        theme.primaryColor.withOpacity(0.2),
+                        theme.secondaryColor.withOpacity(0.1),
                           ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -484,7 +487,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                   ),
                   child: Icon(
                     Icons.location_on,
-                    color: isDarkMode ? const Color(0xFF33B864).withOpacity(0.4) : const Color(0xFF33B864).withOpacity(0.4), // Softer green
+                    color: theme.primaryColor,
                     size: 28,
                   ),
                 ),
@@ -494,7 +497,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                   'Select Your Location',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                      color: isDarkMode ? const Color(0xFF33B864) : const Color(0xFF33B864), // Darker green for better contrast
+                      color: theme.primaryColor,
                       fontSize: 22,
                       letterSpacing: 0.5,
                     ),
@@ -525,9 +528,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            isDarkMode 
-                              ? const Color(0xFF33B864).withOpacity(0.4)
-                              : const Color(0xFF33B864).withOpacity(0.4),
+                            theme.primaryColor.withOpacity(0.4),
                             Colors.transparent,
                           ],
                         ),
@@ -539,32 +540,23 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: isDarkMode 
-                          ? [
-                              const Color(0xFF33B864).withOpacity(0.1),
-                              const Color(0xFF33B864).withOpacity(0.05),
-                            ]
-                          : [
-                              const Color(0xFF33B864).withOpacity(0.1),
-                              const Color(0xFF33B864).withOpacity(0.05),
+                        colors: [
+                          theme.primaryColor.withOpacity(0.1),
+                          theme.primaryColor.withOpacity(0.05),
                             ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isDarkMode 
-                          ? const Color(0xFF33B864).withOpacity(0.2)
-                          : const Color(0xFF33B864).withOpacity(0.2),
+                        color: theme.primaryColor.withOpacity(0.2),
                         width: 1,
                       ),
                     ),
                     child: Text(
                       'OR',
                       style: TextStyle(
-                        color: isDarkMode 
-                          ? const Color(0xFF33B864)
-                          : const Color(0xFF33B864),
+                        color: theme.primaryColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                         letterSpacing: 1.0,
@@ -578,9 +570,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            isDarkMode 
-                              ? const Color(0xFF33B864).withOpacity(0.4)
-                              : const Color(0xFF33B864).withOpacity(0.4),
+                            theme.primaryColor.withOpacity(0.4),
                             Colors.transparent,
                           ],
                         ),
@@ -738,13 +728,15 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   Widget _buildDetectLocationButton() {
+    final theme = DashboardThemes.CitizenTheme;
+    
     return Container(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: isDetectingLocation ? null : _detectCurrentLocation,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF33B864),
-          foregroundColor: Colors.white,
+          backgroundColor: theme.primaryColor,
+          foregroundColor: theme.onPrimaryColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -770,8 +762,10 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   Widget _buildManualSelectionDropdowns() {
+    final theme = DashboardThemes.CitizenTheme;
     final searchState = ref.watch(locationSearchProvider);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
     final List<String> stateItems =
         searchState.states.isNotEmpty ? searchState.states : indianStates;
     final List<String> districtItems = (selectedState == 'Andhra Pradesh')
@@ -789,7 +783,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDarkMode 
+          colors: isDark 
             ? [
                 const Color(0xFF1a1a1a).withOpacity(0.8),
                 const Color(0xFF2a2a2a).withOpacity(0.6),
@@ -803,16 +797,12 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDarkMode 
-            ? const Color(0xFF33B864).withOpacity(0.2)
-            : const Color(0xFF33B864).withOpacity(0.1), // Very subtle border
+          color: theme.primaryColor.withOpacity(0.2), // Use theme color
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-              ? const Color(0xFF33B864).withOpacity(0.05)
-              : const Color(0xFF33B864).withOpacity(0.03), // Very subtle shadow
+            color: theme.primaryColor.withOpacity(0.05), // Use theme color
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -827,14 +817,14 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: isDarkMode 
+                    colors: isDark 
                       ? [
-                          const Color(0xFF33B864).withOpacity(0.2),
-                          const Color(0xFF33B864).withOpacity(0.1),
+                          theme.primaryColor.withOpacity(0.2),
+                          theme.primaryColor.withOpacity(0.1),
                         ]
                       : [
-                          const Color(0xFF33B864).withOpacity(0.08), // Very subtle green
-                          const Color(0xFF33B864).withOpacity(0.04), // Even more subtle
+                          theme.primaryColor.withOpacity(0.08), // Very subtle theme color
+                          theme.primaryColor.withOpacity(0.04), // Even more subtle
                         ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -843,7 +833,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                 ),
                 child: Icon(
                   Icons.location_on,
-                  color: isDarkMode ? const Color(0xFF33B864) : const Color(0xFF33B864), // Softer green
+                  color: theme.primaryColor, // Use theme color
                   size: 20,
                 ),
               ),
@@ -852,7 +842,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           'Manual Selection',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-                  color: isDarkMode ? const Color(0xFF33B864) : const Color(0xFF33B864), // Darker green for better contrast
+                  color: theme.primaryColor, // Use theme color
                   fontSize: 18,
           ),
         ),
@@ -916,7 +906,9 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     List<String> items,
     Function(String?) onChanged,
   ) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = DashboardThemes.CitizenTheme;
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -926,7 +918,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF33B864).withOpacity(0.4),
+            color: theme.primaryColor.withOpacity(0.7),
           ),
         ),
         const SizedBox(height: 6),
@@ -934,7 +926,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           height: 45, // Fixed smaller height
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: isDarkMode 
+              colors: isDark 
                 ? [
                     const Color(0xFF1a1a1a),
                     const Color(0xFF2a2a2a),
@@ -947,9 +939,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
               end: Alignment.bottomRight,
             ),
             border: Border.all(
-              color: isDarkMode 
-                ? const Color(0xFF33B864).withOpacity(0.2)
-                : const Color(0xFF33B864).withOpacity(0.2), // Softer border
+              color: theme.primaryColor.withOpacity(0.3), // Use theme color for border
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(10), // Smaller border radius
@@ -962,25 +952,25 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                 child: Text(
                   'Select $label',
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : const Color(0xFF666666), // Softer gray
+                    color: isDark ? Colors.white70 : theme.primaryColor.withOpacity(0.6),
                     fontSize: 14, // Smaller font size
                   ),
                 ),
               ),
               isExpanded: true,
               style: TextStyle(
-                color: isDarkMode ? Colors.white : const Color(0xFF333333), // Darker text for better contrast
+                color: isDark ? Colors.white : theme.primaryColor,
                 fontSize: 14, // Smaller font size
                 fontWeight: FontWeight.w500,
               ),
-              dropdownColor: isDarkMode 
+              dropdownColor: isDark 
                 ? const Color(0xFF2a2a2a)
                 : const Color(0xFFFAFAFA), // Light background
               icon: Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Icon(
                   Icons.keyboard_arrow_down,
-                  color: isDarkMode ? const Color(0xFF33B864) : const Color(0xFF33B864), // Green
+                  color: theme.primaryColor, // Use theme color
                   size: 20, // Smaller icon size
                 ),
               ),
@@ -993,7 +983,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
                     child: Text(
                       item,
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white : const Color(0xFF333333),
+                        color: isDark ? Colors.white : theme.primaryColor,
                         fontSize: 13, // Smaller font size for dropdown items
                         fontWeight: FontWeight.w500,
                       ),
@@ -1127,9 +1117,11 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
         
         // Prediction Chart Row
         _buildPredictionChartRow(),
+        const SizedBox(height: 16),
       ],
     );
   }
+
 
   /// Build Traffic Signal Card
   Widget _buildTrafficSignalCard() {
@@ -1202,6 +1194,7 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
 
   /// Build Traffic Light Visual
   Widget _buildTrafficLight() {
+    final theme = DashboardThemes.CitizenTheme;
     final status = _getTrafficSignalLevel();
     return Container(
       width: 80,
@@ -1253,13 +1246,13 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
     // More negative = deeper = worse condition
     if (avgDepth >= -5.0) {
       print('🔍 DEBUG: Returning GOOD (green) for depth $avgDepth');
-      return 'good'; // Green: 0 to -5 meters (shallow)
-    } else if (avgDepth < -5.0 && avgDepth >= -16.0) {
+      return 'good'; // Green: 0 to -5 meters (safe)
+    } else if (avgDepth < -5.0 && avgDepth >= -15.0) {
       print('🔍 DEBUG: Returning WARNING (orange) for depth $avgDepth');
-      return 'warning'; // Orange: -5.1 to -16 meters (moderate)
+      return 'warning'; // Orange: -5 to -15 meters (moderate)
     } else {
       print('🔍 DEBUG: Returning CRITICAL (red) for depth $avgDepth');
-      return 'critical'; // Red: beyond -16 meters (deep/critical)
+      return 'critical'; // Red: -15 and above (danger)
     }
   }
 
@@ -2367,6 +2360,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
   }
 
   Widget _buildAnalyticsButton() {
+    final theme = DashboardThemes.CitizenTheme;
+    
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -2384,8 +2379,8 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
           });
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF33B864),
-          foregroundColor: Colors.white,
+          backgroundColor: theme.primaryColor,
+          foregroundColor: theme.onPrimaryColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -2396,32 +2391,48 @@ class _CitizenDashboardState extends ConsumerState<CitizenDashboard> {
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(theme.onPrimaryColor),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     'Loading Analytics...',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18, 
+                      fontWeight: FontWeight.bold,
+                      color: theme.onPrimaryColor,
+                    ),
                   ),
                 ],
               )
             : Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(showAnalytics ? Icons.visibility_off : Icons.analytics, size: 24),
+            Icon(
+              showAnalytics ? Icons.visibility_off : Icons.analytics, 
+              size: 24,
+              color: theme.onPrimaryColor,
+            ),
             const SizedBox(width: 12),
             Text(
               showAnalytics ? 'Hide Analytics' : 'Show Analytics',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold,
+                color: theme.onPrimaryColor,
+              ),
             ),
             const SizedBox(width: 8),
-            Icon(showAnalytics ? Icons.keyboard_arrow_up : Icons.arrow_forward, size: 20),
+            Icon(
+              showAnalytics ? Icons.keyboard_arrow_up : Icons.arrow_forward, 
+              size: 20,
+              color: theme.onPrimaryColor,
+            ),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../themes/dashboard_themes.dart';
 
 /// Onboarding screen with brief info about the app
 class OnboardingScreen extends StatefulWidget {
@@ -19,28 +20,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       subtitle: 'India\'s Groundwater Monitoring Platform',
       description: 'Monitor groundwater levels, track water quality, and make informed decisions about water resources across India.',
       icon: Icons.water_drop,
-      color: Colors.blue,
+      color: DashboardThemes.CitizenTheme.primaryColor,
     ),
     OnboardingPage(
       title: 'For Everyone',
       subtitle: 'Know Your Water Status',
       description: 'Check if your area is safe (green), moderate (orange), or critical (red). Plan your daily water needs and get alerts when water levels change.',
       icon: Icons.home,
-      color: Colors.green,
+      color: DashboardThemes.CitizenTheme.secondaryColor,
     ),
     OnboardingPage(
       title: 'For Researchers',
       subtitle: 'Access Raw Data & Analytics',
       description: 'Download DWLR datasets, analyze trends, compare stations, and export data for research. Advanced visualization tools for groundwater studies.',
-      icon: Icons.science,
-      color: Colors.purple,
+      icon: Icons.search,
+      color: DashboardThemes.ResearcherTheme.primaryColor,
     ),
     OnboardingPage(
-      title: 'Real-time Monitoring',
-      subtitle: 'Powered by India-WRIS Data',
-      description: 'Access live data from Digital Water Level Recorder (DWLR) stations across India. Track seasonal patterns and long-term trends.',
+      title: 'For Policy Makers',
+      subtitle: 'Make Informed Decisions',
+      description: 'Access comprehensive groundwater data, zone analysis, and policy recommendations. Monitor critical areas and implement effective water management strategies.',
       icon: Icons.timeline,
-      color: Colors.orange,
+      color: DashboardThemes.PolicyMakerTheme.primaryColor,
     ),
   ];
 
@@ -52,7 +53,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -64,6 +69,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   TextButton(
                     onPressed: () => _goToRoleSelection(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : Colors.grey[600],
+                    ),
                     child: const Text('Skip'),
                   ),
                 ],
@@ -102,7 +110,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? _pages[index].color
-                          : Colors.grey[300],
+                          : isDark ? Colors.grey[600] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -164,6 +172,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPage(OnboardingPage page) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -174,7 +185,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: page.color.withValues(alpha: 0.1),
+              color: page.color.withValues(alpha: isDark ? 0.2 : 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -203,7 +214,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             page.subtitle,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
+              color: isDark ? Colors.white70 : Colors.grey[700],
             ),
             textAlign: TextAlign.center,
           ),
@@ -214,7 +225,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
+              color: isDark ? Colors.white60 : Colors.grey[600],
               height: 1.5,
             ),
             textAlign: TextAlign.center,

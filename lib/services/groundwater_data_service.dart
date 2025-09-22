@@ -201,11 +201,11 @@ class GroundwaterDataService {
     // For groundwater depth, negative values are normal (below ground level)
     // More negative = deeper = worse condition
     if (averageDepth >= -5.0) {
-      return 'Good'; // Green: 0 to -5 meters (shallow)
-    } else if (averageDepth < -5.0 && averageDepth >= -16.0) {
-      return 'Moderate'; // Orange: -5.1 to -16 meters (moderate)
+      return 'Good'; // Green: 0 to -5 meters (safe)
+    } else if (averageDepth < -5.0 && averageDepth >= -15.0) {
+      return 'Moderate'; // Orange: -5 to -15 meters (moderate)
     } else {
-      return 'Critical'; // Red: beyond -16 meters (deep/critical)
+      return 'Critical'; // Red: -15 and above (danger)
     }
   }
 

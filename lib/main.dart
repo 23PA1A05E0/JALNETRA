@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'routes/app_router.dart';
 import 'providers/dwlr_provider.dart';
 import 'providers/theme_provider.dart';
+import 'themes/dashboard_themes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,20 +14,18 @@ void main() async {
     ),
   );
 }
-// 
+
 /// Main application widget
 class JALNETRAApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final lightTheme = ref.watch(themeDataProvider);
-    final darkTheme = ref.watch(darkThemeDataProvider);
 
     return MaterialApp.router(
       title: 'JALNETRA',
       debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
+      theme: DashboardThemes.CitizenTheme.toThemeData(brightness: Brightness.light),
+      darkTheme: DashboardThemes.CitizenTheme.toThemeData(brightness: Brightness.dark),
       themeMode: themeMode,
       routerConfig: appRouter,
     );
